@@ -1,5 +1,5 @@
 const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
-const ALPHA_VANTAGE_BASE = "https://www.alphavantage.co/query";
+const FINNHUB_BASE = "https://finnhub.io/api/v1";
 
 export interface AssetSearchResult {
   id: string;
@@ -143,34 +143,37 @@ export async function searchCrypto(query: string): Promise<AssetSearchResult[]> 
 }
 
 export async function searchStocks(query: string): Promise<AssetSearchResult[]> {
-  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
+  const apiKey = process.env.FINNHUB_API_KEY;
   
   if (!apiKey) {
     return filterLocalAssets([...POPULAR_STOCKS, ...POPULAR_ETFS], query);
   }
 
   try {
+    // Finnhub symbol lookup endpoint
     const response = await fetch(
-      `${ALPHA_VANTAGE_BASE}?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(query)}&apikey=${apiKey}`
+      `${FINNHUB_BASE}/search?q=${encodeURIComponent(query)}&token=${apiKey}`
     );
     
     if (!response.ok) {
-      console.error("Alpha Vantage search failed:", response.status);
+      console.error("Finnhub search failed:", response.status);
       return filterLocalAssets([...POPULAR_STOCKS, ...POPULAR_ETFS], query);
     }
 
     const data = await response.json();
-    const matches = data.bestMatches?.slice(0, 10) || [];
+    const results = data.result?.slice(0, 10) || [];
     
-    return matches.map((match: any) => {
-      const type = match["3. type"]?.toLowerCase().includes("etf") ? "etf" : "stock";
-      return {
-        id: match["1. symbol"],
-        symbol: match["1. symbol"],
-        name: match["2. name"],
-        type: type as "stock" | "etf",
-      };
-    });
+    return results
+      .filter((item: any) => item.type === "Common Stock" || item.type === "ETF")
+      .map((item: any) => {
+        const type = item.type === "ETF" ? "etf" : "stock";
+        return {
+          id: item.symbol,
+          symbol: item.symbol,
+          name: item.description,
+          type: type as "stock" | "etf",
+        };
+      });
   } catch (error) {
     console.error("Error searching stocks:", error);
     return filterLocalAssets([...POPULAR_STOCKS, ...POPULAR_ETFS], query);

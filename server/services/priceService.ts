@@ -44,7 +44,7 @@ interface PriceResult {
   symbol: string;
   price: number;
   change24h: number;
-  source: "coingecko" | "alphavantage" | "mock";
+  source: "coingecko" | "finnhub" | "mock";
 }
 
 const ID_TO_SYMBOL: Record<string, string> = Object.fromEntries(
@@ -121,28 +121,41 @@ export async function getStockPrices(
     return results;
   }
 
-  for (const symbol of symbols) {
+  // Finnhub allows parallel requests - batch them for efficiency
+  const fetchPromises = symbols.map(async (symbol) => {
     try {
-      const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`;
+      // Finnhub quote endpoint
+      const url = `https://finnhub.io/api/v1/quote?symbol=${symbol.toUpperCase()}&token=${apiKey}`;
       const response = await fetch(url);
 
       if (!response.ok) {
-        continue;
+        console.error(`Finnhub API error for ${symbol}: ${response.status}`);
+        return null;
       }
 
       const data = await response.json();
-      const quote = data["Global Quote"];
-
-      if (quote && quote["05. price"]) {
-        results.push({
+      
+      // Finnhub returns: c (current), d (change), dp (percent change), h (high), l (low), o (open), pc (previous close)
+      if (data && data.c && data.c > 0) {
+        return {
           symbol: symbol.toUpperCase(),
-          price: parseFloat(quote["05. price"]),
-          change24h: parseFloat(quote["10. change percent"]?.replace("%", "") || "0"),
-          source: "alphavantage",
-        });
+          price: data.c,
+          change24h: data.dp || 0, // dp is the percentage change
+          source: "finnhub" as const,
+        };
       }
+      return null;
     } catch (error) {
       console.error(`Error fetching stock price for ${symbol}:`, error);
+      return null;
+    }
+  });
+
+  const fetchResults = await Promise.all(fetchPromises);
+  
+  for (const result of fetchResults) {
+    if (result) {
+      results.push(result);
     }
   }
 
@@ -152,11 +165,11 @@ export async function getStockPrices(
 export async function getAllPrices(
   cryptoSymbols: string[],
   stockSymbols: string[],
-  alphaVantageKey?: string
+  finnhubKey?: string
 ): Promise<PriceResult[]> {
   const [cryptoPrices, stockPrices] = await Promise.all([
     getCryptoPrices(cryptoSymbols),
-    getStockPrices(stockSymbols, alphaVantageKey),
+    getStockPrices(stockSymbols, finnhubKey),
   ]);
 
   return [...cryptoPrices, ...stockPrices];

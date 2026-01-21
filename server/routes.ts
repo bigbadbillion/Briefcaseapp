@@ -37,7 +37,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/prices/stocks", async (req, res) => {
     try {
       const symbols = (req.query.symbols as string)?.split(",") || [];
-      const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
+      const apiKey = process.env.FINNHUB_API_KEY;
       
       if (symbols.length === 0) {
         return res.status(400).json({ error: "symbols query parameter required" });
@@ -47,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ 
           prices: [], 
           timestamp: Date.now(),
-          message: "Alpha Vantage API key not configured" 
+          message: "Finnhub API key not configured" 
         });
       }
       
@@ -70,13 +70,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cryptoSymbols = symbols.filter((s) => isCryptoSymbol(s));
       const stockSymbols = symbols.filter((s) => !isCryptoSymbol(s));
       
-      const alphaVantageKey = process.env.ALPHA_VANTAGE_API_KEY;
-      const prices = await getAllPrices(cryptoSymbols, stockSymbols, alphaVantageKey);
+      const finnhubKey = process.env.FINNHUB_API_KEY;
+      const prices = await getAllPrices(cryptoSymbols, stockSymbols, finnhubKey);
       
       res.json({ 
         prices, 
         timestamp: Date.now(),
-        hasAlphaVantage: !!alphaVantageKey,
+        hasFinnhub: !!finnhubKey,
       });
     } catch (error) {
       console.error("Error in /api/prices/batch:", error);
@@ -114,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       timestamp: Date.now(),
       services: {
         coingecko: true,
-        alphavantage: !!process.env.ALPHA_VANTAGE_API_KEY,
+        finnhub: !!process.env.FINNHUB_API_KEY,
         gemini: !!process.env.GEMINI_API_KEY,
       }
     });
