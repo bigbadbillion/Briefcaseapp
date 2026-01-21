@@ -18,6 +18,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 import { getHoldings, calculatePortfolioMetrics, Holding } from "@/lib/storage";
+import { sendChatMessage, type ChatMessage as APIChatMessage, type PortfolioContext } from "@/lib/aiService";
 
 interface Message {
   id: string;
@@ -25,19 +26,6 @@ interface Message {
   content: string;
   timestamp: Date;
 }
-
-const SAMPLE_RESPONSES: Record<string, string> = {
-  diversified:
-    "Based on your portfolio, you have exposure to 5 different asset types: stocks (35%), crypto (32%), ETFs (15%), bonds (10%), and real estate (8%). This is a moderately diversified portfolio, but you might want to reduce crypto exposure for lower volatility.",
-  risk: "Your portfolio has a risk score of 58/100, which is in the moderate range. The main contributors to risk are your cryptocurrency holdings (Bitcoin and Ethereum). Consider adding more bonds or dividend stocks for stability.",
-  best: "Your best performing asset is Bitcoin (BTC), which is up 60.7% from your purchase price. However, past performance doesn't guarantee future returns. Consider taking some profits to lock in gains.",
-  worst:
-    "Your worst performer is the US Treasury Bond (TLT), down about 2.5% from purchase. This is typical for bonds in a rising rate environment. However, bonds provide important portfolio stability.",
-  recommend:
-    "Based on your current allocation, I'd suggest: 1) Reduce crypto exposure from 32% to 20%, 2) Add more international ETF exposure, 3) Consider adding a small allocation to commodities like gold for inflation protection.",
-  total:
-    "Your total portfolio value is approximately $68,500. You've gained about $12,800 (23%) from your total cost basis of $55,700. Congratulations on your investment gains!",
-};
 
 export default function AIChatModal() {
   const insets = useSafeAreaInsets();
@@ -61,52 +49,51 @@ export default function AIChatModal() {
         id: "welcome",
         role: "assistant",
         content:
-          "Hello! I'm your AI portfolio assistant. I can help you understand your investments, analyze your risk, and provide insights. Try asking me about your diversification, risk level, or best performers!",
+          "Hello! I'm your AI portfolio assistant powered by Gemini. I can help you understand your investments, analyze your risk, and provide personalized insights. Try asking me about your diversification, risk level, or recommendations!",
         timestamp: new Date(),
       };
       setMessages([welcomeMessage]);
     }
   }, []);
 
-  const getAIResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
+  const buildPortfolioContext = (): PortfolioContext => {
     const metrics = calculatePortfolioMetrics(holdings);
-
-    if (lowerMessage.includes("diversif")) {
-      return SAMPLE_RESPONSES.diversified;
-    }
-    if (lowerMessage.includes("risk") || lowerMessage.includes("volatile")) {
-      return SAMPLE_RESPONSES.risk;
-    }
-    if (lowerMessage.includes("best") || lowerMessage.includes("top")) {
-      return SAMPLE_RESPONSES.best;
-    }
-    if (lowerMessage.includes("worst") || lowerMessage.includes("underperform")) {
-      return SAMPLE_RESPONSES.worst;
-    }
-    if (lowerMessage.includes("recommend") || lowerMessage.includes("suggest")) {
-      return SAMPLE_RESPONSES.recommend;
-    }
-    if (lowerMessage.includes("total") || lowerMessage.includes("value") || lowerMessage.includes("worth")) {
-      return `Your portfolio is worth $${metrics.totalValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}. You have ${holdings.length} different holdings with a total gain/loss of ${metrics.totalGainLossPercent >= 0 ? "+" : ""}${metrics.totalGainLossPercent.toFixed(1)}%.`;
-    }
-    if (lowerMessage.includes("holding") || lowerMessage.includes("asset")) {
-      const holdingsList = holdings.map((h) => `${h.symbol} (${h.type})`).join(", ");
-      return `You currently hold: ${holdingsList}. Would you like me to analyze any specific asset?`;
-    }
-
-    return `I understand you're asking about "${userMessage}". Based on your portfolio of ${holdings.length} holdings worth $${metrics.totalValue.toLocaleString()}, I can help you with diversification analysis, risk assessment, and investment recommendations. What would you like to know more about?`;
+    return {
+      totalValue: metrics.totalValue,
+      riskScore: metrics.riskScore,
+      diversificationScore: metrics.diversificationScore,
+      holdings: holdings.map((h) => ({
+        name: h.name,
+        symbol: h.symbol,
+        type: h.type,
+        value: h.currentPrice * h.quantity,
+        gain: (h.currentPrice - h.purchasePrice) * h.quantity,
+        gainPercent: ((h.currentPrice - h.purchasePrice) / h.purchasePrice) * 100,
+      })),
+    };
   };
 
-  const handleSend = () => {
+  const buildChatHistory = (): APIChatMessage[] => {
+    return messages
+      .filter((m) => m.id !== "welcome")
+      .slice(0, 10)
+      .reverse()
+      .map((m) => ({
+        role: m.role === "user" ? "user" : "model",
+        content: m.content,
+      }));
+  };
+
+  const handleSend = async () => {
     if (!inputText.trim()) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+    const userMessageText = inputText.trim();
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: inputText.trim(),
+      content: userMessageText,
       timestamp: new Date(),
     };
 
@@ -115,17 +102,33 @@ export default function AIChatModal() {
     setIsTyping(true);
     Keyboard.dismiss();
 
-    setTimeout(() => {
+    try {
+      const history = buildChatHistory();
+      const context = buildPortfolioContext();
+      
+      const response = await sendChatMessage(userMessageText, history, context);
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: getAIResponse(userMessage.content),
+        content: response.response,
         timestamp: new Date(),
       };
       setMessages((prev) => [aiResponse, ...prev]);
-      setIsTyping(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }, 1000 + Math.random() * 1000);
+    } catch (error) {
+      console.error("Chat error:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "I'm sorry, I encountered an error processing your request. Please try again.",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [errorMessage, ...prev]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
@@ -229,12 +232,11 @@ export default function AIChatModal() {
 
       {messages.length === 1 ? (
         <Animated.View entering={FadeIn.delay(300).duration(400)} style={styles.suggestionsContainer}>
-          {suggestedQuestions.map((question, index) => (
+          {suggestedQuestions.map((question) => (
             <Pressable
               key={question}
               onPress={() => {
                 setInputText(question);
-                setTimeout(handleSend, 100);
               }}
               style={[
                 styles.suggestionChip,
@@ -277,21 +279,22 @@ export default function AIChatModal() {
             onChangeText={setInputText}
             multiline
             maxLength={500}
+            onSubmitEditing={handleSend}
           />
           <Pressable
             onPress={handleSend}
-            disabled={!inputText.trim()}
+            disabled={!inputText.trim() || isTyping}
             style={[
               styles.sendButton,
               {
-                backgroundColor: inputText.trim() ? theme.primary : theme.backgroundTertiary,
+                backgroundColor: inputText.trim() && !isTyping ? theme.primary : theme.backgroundTertiary,
               },
             ]}
           >
             <Feather
               name="send"
               size={18}
-              color={inputText.trim() ? "#FFFFFF" : theme.textSecondary}
+              color={inputText.trim() && !isTyping ? "#FFFFFF" : theme.textSecondary}
             />
           </Pressable>
         </View>

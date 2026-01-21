@@ -6,6 +6,14 @@ import {
   getAllPrices,
   isCryptoSymbol,
 } from "./services/priceService";
+import {
+  chat,
+  generatePortfolioInsights,
+  explainAsset,
+  isGeminiConfigured,
+  type ChatMessage,
+  type PortfolioContext,
+} from "./services/geminiService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/prices/crypto", async (req, res) => {
@@ -82,6 +90,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
         gemini: !!process.env.GEMINI_API_KEY,
       }
     });
+  });
+
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const { message, history, portfolioContext } = req.body as {
+        message: string;
+        history?: ChatMessage[];
+        portfolioContext?: PortfolioContext;
+      };
+
+      if (!message) {
+        return res.status(400).json({ error: "message is required" });
+      }
+
+      if (!isGeminiConfigured()) {
+        return res.json({
+          response: "AI features are not available. Please configure your Gemini API key.",
+          configured: false,
+        });
+      }
+
+      const response = await chat(message, history || [], portfolioContext);
+      res.json({ response, configured: true });
+    } catch (error) {
+      console.error("Error in /api/ai/chat:", error);
+      res.status(500).json({ error: "Failed to generate response" });
+    }
+  });
+
+  app.post("/api/ai/insights", async (req, res) => {
+    try {
+      const { portfolioContext } = req.body as { portfolioContext: PortfolioContext };
+
+      if (!portfolioContext) {
+        return res.status(400).json({ error: "portfolioContext is required" });
+      }
+
+      if (!isGeminiConfigured()) {
+        return res.json({
+          insights: "AI insights are not available. Please configure your Gemini API key.",
+          configured: false,
+        });
+      }
+
+      const insights = await generatePortfolioInsights(portfolioContext);
+      res.json({ insights, configured: true });
+    } catch (error) {
+      console.error("Error in /api/ai/insights:", error);
+      res.status(500).json({ error: "Failed to generate insights" });
+    }
+  });
+
+  app.get("/api/ai/explain/:symbol", async (req, res) => {
+    try {
+      const { symbol } = req.params;
+      const { name, type } = req.query as { name?: string; type?: string };
+
+      if (!isGeminiConfigured()) {
+        return res.json({
+          explanation: "AI explanations are not available. Please configure your Gemini API key.",
+          configured: false,
+        });
+      }
+
+      const explanation = await explainAsset(
+        symbol,
+        name || symbol,
+        type || "investment"
+      );
+      res.json({ explanation, configured: true });
+    } catch (error) {
+      console.error("Error in /api/ai/explain:", error);
+      res.status(500).json({ error: "Failed to generate explanation" });
+    }
   });
 
   const httpServer = createServer(app);
