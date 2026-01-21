@@ -92,22 +92,25 @@ export default function ProfileScreen() {
       setNotificationsEnabled(true);
       setNotificationPermission("granted");
     } else if (permission.status === "denied" && !permission.canAskAgain) {
+      const buttons: { text: string; style?: "cancel" | "default" | "destructive"; onPress?: () => void }[] = [
+        { text: "Cancel", style: "cancel" as const },
+      ];
+      if (Platform.OS !== "web") {
+        buttons.push({
+          text: "Open Settings",
+          onPress: async () => {
+            try {
+              await Linking.openSettings();
+            } catch (error) {}
+          },
+        });
+      } else {
+        buttons.push({ text: "OK" });
+      }
       Alert.alert(
         "Enable Notifications",
         "Notification permissions were denied. Please enable them in your device settings.",
-        [
-          { text: "Cancel", style: "cancel" },
-          Platform.OS !== "web"
-            ? {
-                text: "Open Settings",
-                onPress: async () => {
-                  try {
-                    await Linking.openSettings();
-                  } catch (error) {}
-                },
-              }
-            : { text: "OK" },
-        ].filter(Boolean)
+        buttons
       );
     } else {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -392,7 +395,7 @@ export default function ProfileScreen() {
           <Pressable
             style={[
               styles.currencyModal,
-              { backgroundColor: theme.backgroundSurface },
+              { backgroundColor: theme.backgroundDefault },
             ]}
             onPress={(e) => e.stopPropagation()}
           >
