@@ -25,6 +25,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 import {
   getHoldings,
@@ -46,6 +47,7 @@ export default function ProfileScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useTheme();
+  const { user, signOut } = useAuth();
 
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,6 +175,25 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleSignOut = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            await signOut();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          },
+        },
+      ]
+    );
+  };
+
   const currencySymbol =
     CURRENCIES.find((c) => c.code === selectedCurrency)?.symbol || "$";
 
@@ -199,10 +220,10 @@ export default function ProfileScreen() {
               <Feather name="user" size={40} color="#FFFFFF" />
             </View>
             <ThemedText type="h1" style={styles.userName}>
-              Investor
+              {user?.name || "Investor"}
             </ThemedText>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
-              Portfolio Manager
+              {user?.email || "Portfolio Manager"}
             </ThemedText>
           </View>
         </Animated.View>
@@ -414,6 +435,14 @@ export default function ProfileScreen() {
           </Card>
         </Animated.View>
 
+        <Animated.View entering={FadeIn.delay(600).duration(400)}>
+          <Card style={styles.signOutCard}>
+            <Button variant="secondary" onPress={handleSignOut}>
+              Sign Out
+            </Button>
+          </Card>
+        </Animated.View>
+
         <View style={styles.footer}>
           <ThemedText
             type="caption"
@@ -601,6 +630,9 @@ const styles = StyleSheet.create({
     marginRight: Spacing.md,
   },
   dangerCard: {
+    marginBottom: Spacing.lg,
+  },
+  signOutCard: {
     marginBottom: Spacing.lg,
   },
   sectionTitle: {

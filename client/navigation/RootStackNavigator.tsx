@@ -1,12 +1,17 @@
 import React from "react";
+import { ActivityIndicator, View } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
 import AddHoldingModal from "@/screens/AddHoldingModal";
 import AIChatModal from "@/screens/AIChatModal";
 import AssetDetailScreen from "@/screens/AssetDetailScreen";
+import AuthScreen from "@/screens/AuthScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
 
 export type RootStackParamList = {
+  Auth: undefined;
   Main: undefined;
   AddHoldingModal: undefined;
   AIChatModal: undefined;
@@ -18,39 +23,59 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function RootStackNavigator() {
   const screenOptions = useScreenOptions();
   const opaqueScreenOptions = useScreenOptions({ transparent: false });
+  const { isAuthenticated, isLoading } = useAuth();
+  const { theme } = useTheme();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: theme.backgroundRoot }}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
-      <Stack.Screen
-        name="Main"
-        component={MainTabNavigator}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="AddHoldingModal"
-        component={AddHoldingModal}
-        options={{
-          ...opaqueScreenOptions,
-          presentation: "modal",
-          headerTitle: "Add Holding",
-        }}
-      />
-      <Stack.Screen
-        name="AIChatModal"
-        component={AIChatModal}
-        options={{
-          ...opaqueScreenOptions,
-          presentation: "modal",
-          headerTitle: "Ask AI",
-        }}
-      />
-      <Stack.Screen
-        name="AssetDetail"
-        component={AssetDetailScreen}
-        options={{
-          headerTitle: "Asset Details",
-        }}
-      />
+      {isAuthenticated ? (
+        <>
+          <Stack.Screen
+            name="Main"
+            component={MainTabNavigator}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AddHoldingModal"
+            component={AddHoldingModal}
+            options={{
+              ...opaqueScreenOptions,
+              presentation: "modal",
+              headerTitle: "Add Holding",
+            }}
+          />
+          <Stack.Screen
+            name="AIChatModal"
+            component={AIChatModal}
+            options={{
+              ...opaqueScreenOptions,
+              presentation: "modal",
+              headerTitle: "Ask AI",
+            }}
+          />
+          <Stack.Screen
+            name="AssetDetail"
+            component={AssetDetailScreen}
+            options={{
+              headerTitle: "Asset Details",
+            }}
+          />
+        </>
+      ) : (
+        <Stack.Screen
+          name="Auth"
+          component={AuthScreen}
+          options={{ headerShown: false }}
+        />
+      )}
     </Stack.Navigator>
   );
 }
