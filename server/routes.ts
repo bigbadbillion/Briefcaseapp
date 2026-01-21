@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "node:http";
 import {
   getCryptoPrices,
@@ -18,8 +18,308 @@ import {
   searchAssets,
   getPopularAssets,
 } from "./services/assetSearchService";
+import {
+  register,
+  login,
+  verifyEmail,
+  resendVerification,
+  validateSession,
+  logout,
+  getUserFromToken,
+} from "./services/authService";
+import { storage } from "./storage";
+import { registerSchema, loginSchema, holdingSchema } from "@shared/schema";
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    name: string | null;
+    isPremium: boolean;
+  };
+}
+
+async function authMiddleware(
+  req: AuthenticatedRequest, 
+  res: Response, 
+  next: NextFunction
+) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  const token = authHeader.substring(7);
+  const user = await getUserFromToken(token);
+  
+  if (!user) {
+    return res.status(401).json({ error: "Invalid or expired session" });
+  }
+
+  req.user = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    isPremium: user.isPremium,
+  };
+  
+  next();
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const parsed = registerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ 
+          error: parsed.error.errors[0]?.message || "Invalid input" 
+        });
+      }
+
+      const { email, password, name } = parsed.data;
+      const result = await register(email, password, name);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json({
+        success: true,
+        message: "Account created. Please check your email to verify your account.",
+        user: result.user,
+        verificationToken: result.verificationToken,
+      });
+    } catch (error) {
+      console.error("Error in /api/auth/register:", error);
+      res.status(500).json({ error: "Failed to create account" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const parsed = loginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ 
+          error: parsed.error.errors[0]?.message || "Invalid input" 
+        });
+      }
+
+      const { email, password } = parsed.data;
+      const result = await login(email, password);
+
+      if (!result.success) {
+        return res.status(401).json({ 
+          error: result.error,
+          verificationRequired: result.verificationRequired,
+        });
+      }
+
+      res.json({
+        success: true,
+        user: result.user,
+        token: result.token,
+      });
+    } catch (error) {
+      console.error("Error in /api/auth/login:", error);
+      res.status(500).json({ error: "Failed to log in" });
+    }
+  });
+
+  app.get("/api/auth/verify/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const result = await verifyEmail(token);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json({
+        success: true,
+        message: "Email verified successfully",
+        user: result.user,
+        token: result.token,
+      });
+    } catch (error) {
+      console.error("Error in /api/auth/verify:", error);
+      res.status(500).json({ error: "Failed to verify email" });
+    }
+  });
+
+  app.post("/api/auth/resend-verification", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      const result = await resendVerification(email);
+      
+      res.json({
+        success: true,
+        message: "If an account exists with this email, a verification link has been sent.",
+        verificationToken: result.verificationToken,
+      });
+    } catch (error) {
+      console.error("Error in /api/auth/resend-verification:", error);
+      res.status(500).json({ error: "Failed to resend verification" });
+    }
+  });
+
+  app.get("/api/auth/me", async (req: AuthenticatedRequest, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const token = authHeader.substring(7);
+      const result = await validateSession(token);
+
+      if (!result.success) {
+        return res.status(401).json({ error: result.error });
+      }
+
+      res.json({
+        success: true,
+        user: result.user,
+      });
+    } catch (error) {
+      console.error("Error in /api/auth/me:", error);
+      res.status(500).json({ error: "Failed to get user info" });
+    }
+  });
+
+  app.post("/api/auth/logout", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        await logout(token);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error in /api/auth/logout:", error);
+      res.status(500).json({ error: "Failed to log out" });
+    }
+  });
+
+  app.get("/api/holdings", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
+    try {
+      const holdings = await storage.getHoldingsByUser(req.user!.id);
+      res.json({ holdings });
+    } catch (error) {
+      console.error("Error in GET /api/holdings:", error);
+      res.status(500).json({ error: "Failed to get holdings" });
+    }
+  });
+
+  app.post("/api/holdings", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
+    try {
+      const parsed = holdingSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ 
+          error: parsed.error.errors[0]?.message || "Invalid input" 
+        });
+      }
+
+      const holding = await storage.createHolding(req.user!.id, {
+        ...parsed.data,
+        quantity: parsed.data.quantity.toString(),
+        purchasePrice: parsed.data.purchasePrice.toString(),
+        purchaseDate: parsed.data.purchaseDate ? new Date(parsed.data.purchaseDate) : null,
+        notes: parsed.data.notes || null,
+      });
+
+      res.json({ success: true, holding });
+    } catch (error) {
+      console.error("Error in POST /api/holdings:", error);
+      res.status(500).json({ error: "Failed to create holding" });
+    }
+  });
+
+  app.put("/api/holdings/:id", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
+    try {
+      const id = req.params.id as string;
+      const parsed = holdingSchema.partial().safeParse(req.body);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ 
+          error: parsed.error.errors[0]?.message || "Invalid input" 
+        });
+      }
+
+      const updateData: any = { ...parsed.data };
+      if (parsed.data.quantity !== undefined) {
+        updateData.quantity = parsed.data.quantity.toString();
+      }
+      if (parsed.data.purchasePrice !== undefined) {
+        updateData.purchasePrice = parsed.data.purchasePrice.toString();
+      }
+      if (parsed.data.purchaseDate !== undefined) {
+        updateData.purchaseDate = parsed.data.purchaseDate ? new Date(parsed.data.purchaseDate) : null;
+      }
+
+      const holding = await storage.updateHolding(id, req.user!.id, updateData);
+
+      if (!holding) {
+        return res.status(404).json({ error: "Holding not found" });
+      }
+
+      res.json({ success: true, holding });
+    } catch (error) {
+      console.error("Error in PUT /api/holdings:", error);
+      res.status(500).json({ error: "Failed to update holding" });
+    }
+  });
+
+  app.delete("/api/holdings/:id", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
+    try {
+      const id = req.params.id as string;
+      const deleted = await storage.deleteHolding(id, req.user!.id);
+
+      if (!deleted) {
+        return res.status(404).json({ error: "Holding not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error in DELETE /api/holdings:", error);
+      res.status(500).json({ error: "Failed to delete holding" });
+    }
+  });
+
+  app.get("/api/settings", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
+    try {
+      const settings = await storage.getUserSettings(req.user!.id);
+      res.json({ 
+        settings: settings || { 
+          currency: 'USD', 
+          notificationsEnabled: true 
+        } 
+      });
+    } catch (error) {
+      console.error("Error in GET /api/settings:", error);
+      res.status(500).json({ error: "Failed to get settings" });
+    }
+  });
+
+  app.put("/api/settings", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { currency, notificationsEnabled } = req.body;
+      const settings = await storage.upsertUserSettings(req.user!.id, {
+        currency,
+        notificationsEnabled,
+      });
+
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error("Error in PUT /api/settings:", error);
+      res.status(500).json({ error: "Failed to update settings" });
+    }
+  });
+
   app.get("/api/prices/crypto", async (req, res) => {
     try {
       const symbols = (req.query.symbols as string)?.split(",") || [];
