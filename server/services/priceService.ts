@@ -1,5 +1,31 @@
 const COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3";
 
+// Simple in-memory cache to avoid rate limits
+interface CacheEntry {
+  price: number;
+  change24h: number;
+  timestamp: number;
+}
+
+const priceCache: Map<string, CacheEntry> = new Map();
+const CACHE_TTL_MS = 60 * 1000; // Cache for 60 seconds
+
+function getCachedPrice(symbol: string): CacheEntry | null {
+  const entry = priceCache.get(symbol.toUpperCase());
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
+    return entry;
+  }
+  return null;
+}
+
+function setCachedPrice(symbol: string, price: number, change24h: number): void {
+  priceCache.set(symbol.toUpperCase(), {
+    price,
+    change24h,
+    timestamp: Date.now(),
+  });
+}
+
 const CRYPTO_SYMBOL_TO_ID: Record<string, string> = {
   BTC: "bitcoin",
   ETH: "ethereum",
@@ -55,24 +81,41 @@ export async function getCryptoPrices(symbols: string[]): Promise<PriceResult[]>
   const results: PriceResult[] = [];
   const coinIds: string[] = [];
   const idToSymbolMap: Record<string, string> = {};
+  const symbolsToFetch: string[] = [];
 
   for (const input of symbols) {
     const lowerInput = input.toLowerCase();
     const upperInput = input.toUpperCase();
     
+    // Check cache first
+    const cached = getCachedPrice(upperInput);
+    if (cached) {
+      results.push({
+        symbol: upperInput,
+        price: cached.price,
+        change24h: cached.change24h,
+        source: "coingecko",
+      });
+      continue;
+    }
+    
     if (CRYPTO_SYMBOL_TO_ID[upperInput]) {
       const coinId = CRYPTO_SYMBOL_TO_ID[upperInput];
       coinIds.push(coinId);
       idToSymbolMap[coinId] = upperInput;
+      symbolsToFetch.push(upperInput);
     } else if (ID_TO_SYMBOL[lowerInput]) {
       coinIds.push(lowerInput);
       idToSymbolMap[lowerInput] = ID_TO_SYMBOL[lowerInput];
+      symbolsToFetch.push(ID_TO_SYMBOL[lowerInput]);
     } else {
       coinIds.push(lowerInput);
       idToSymbolMap[lowerInput] = upperInput;
+      symbolsToFetch.push(upperInput);
     }
   }
 
+  // If all prices were cached, return early
   if (coinIds.length === 0) {
     return results;
   }
@@ -96,6 +139,9 @@ export async function getCryptoPrices(symbols: string[]): Promise<PriceResult[]>
     for (const [coinId, priceData] of Object.entries(data)) {
       const symbol = idToSymbolMap[coinId];
       if (symbol && priceData) {
+        // Cache the result
+        setCachedPrice(symbol, priceData.usd, priceData.usd_24h_change || 0);
+        
         results.push({
           symbol,
           price: priceData.usd,

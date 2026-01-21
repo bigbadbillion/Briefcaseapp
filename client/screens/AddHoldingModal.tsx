@@ -3,13 +3,13 @@ import {
   StyleSheet,
   View,
   TextInput,
-  ScrollView,
   Pressable,
   Alert,
   ActivityIndicator,
   FlatList,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -219,7 +219,7 @@ export default function AddHoldingModal() {
   );
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollViewCompat
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
       contentContainerStyle={{
         paddingTop: Spacing.lg,
@@ -529,7 +529,7 @@ export default function AddHoldingModal() {
           {saving ? "Saving..." : "Add Holding"}
         </Button>
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollViewCompat>
   );
 }
 
