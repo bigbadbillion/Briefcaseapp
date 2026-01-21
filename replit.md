@@ -57,9 +57,16 @@ Preferred communication style: Simple, everyday language.
 
 ### Environment Variables Required
 - `DATABASE_URL` - PostgreSQL connection string
-- `GEMINI_API_KEY` - Google Gemini API key for AI features
-- `ALPHA_VANTAGE_API_KEY` - For stock price data (optional, graceful fallback)
+- `GEMINI_API_KEY` - Google Gemini API key for AI features (get from https://aistudio.google.com/app/apikey)
+- `ALPHA_VANTAGE_API_KEY` - For stock price data (get free key from https://www.alphavantage.co/support/#api-key)
 - `EXPO_PUBLIC_DOMAIN` - Public domain for API requests from client
+
+## Smart Asset Entry
+The Add Holding flow provides intelligent assistance:
+- **Popular asset suggestions** - Shows top assets by category (top crypto, stocks, ETFs, etc.)
+- **Search autocomplete** - Queries CoinGecko for crypto, Alpha Vantage for stocks
+- **Auto-price fetching** - Current price is fetched automatically when you select an asset
+- **Minimal input required** - User only needs to enter quantity and purchase price
 
 ### Build & Development
 - Expo handles mobile builds (iOS/Android)

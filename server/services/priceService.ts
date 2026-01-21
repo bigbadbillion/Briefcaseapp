@@ -47,17 +47,29 @@ interface PriceResult {
   source: "coingecko" | "alphavantage" | "mock";
 }
 
+const ID_TO_SYMBOL: Record<string, string> = Object.fromEntries(
+  Object.entries(CRYPTO_SYMBOL_TO_ID).map(([symbol, id]) => [id, symbol])
+);
+
 export async function getCryptoPrices(symbols: string[]): Promise<PriceResult[]> {
   const results: PriceResult[] = [];
   const coinIds: string[] = [];
-  const symbolToIdMap: Record<string, string> = {};
+  const idToSymbolMap: Record<string, string> = {};
 
-  for (const symbol of symbols) {
-    const upperSymbol = symbol.toUpperCase();
-    const coinId = CRYPTO_SYMBOL_TO_ID[upperSymbol];
-    if (coinId) {
+  for (const input of symbols) {
+    const lowerInput = input.toLowerCase();
+    const upperInput = input.toUpperCase();
+    
+    if (CRYPTO_SYMBOL_TO_ID[upperInput]) {
+      const coinId = CRYPTO_SYMBOL_TO_ID[upperInput];
       coinIds.push(coinId);
-      symbolToIdMap[coinId] = upperSymbol;
+      idToSymbolMap[coinId] = upperInput;
+    } else if (ID_TO_SYMBOL[lowerInput]) {
+      coinIds.push(lowerInput);
+      idToSymbolMap[lowerInput] = ID_TO_SYMBOL[lowerInput];
+    } else {
+      coinIds.push(lowerInput);
+      idToSymbolMap[lowerInput] = upperInput;
     }
   }
 
@@ -82,7 +94,7 @@ export async function getCryptoPrices(symbols: string[]): Promise<PriceResult[]>
     const data: CoinGeckoPrice = await response.json();
 
     for (const [coinId, priceData] of Object.entries(data)) {
-      const symbol = symbolToIdMap[coinId];
+      const symbol = idToSymbolMap[coinId];
       if (symbol && priceData) {
         results.push({
           symbol,

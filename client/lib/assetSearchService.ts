@@ -68,9 +68,10 @@ export async function fetchAssetPrice(
       if (!response.ok) return null;
       
       const data = await response.json();
-      const prices = data.prices || {};
-      const id = coinId || symbol.toLowerCase();
-      return prices[id]?.usd || prices[symbol.toLowerCase()]?.usd || null;
+      const prices = data.prices || [];
+      const upperSymbol = symbol.toUpperCase();
+      const found = prices.find((p: any) => p.symbol === upperSymbol || p.symbol?.toLowerCase() === symbol.toLowerCase());
+      return found?.price || null;
     }
     
     if (type === "stock" || type === "etf") {
