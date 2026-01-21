@@ -15,6 +15,10 @@ export interface Holding {
 const HOLDINGS_KEY = "@briefcase_holdings";
 const THEME_KEY = "@briefcase_theme_mode";
 
+function generateUniqueId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
+
 export async function getHoldings(): Promise<Holding[]> {
   try {
     const data = await AsyncStorage.getItem(HOLDINGS_KEY);
@@ -30,7 +34,7 @@ export async function saveHolding(holding: Omit<Holding, "id" | "createdAt">): P
     const holdings = await getHoldings();
     const newHolding: Holding = {
       ...holding,
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       createdAt: new Date().toISOString(),
     };
     holdings.push(newHolding);
@@ -243,9 +247,32 @@ export const SAMPLE_HOLDINGS: Omit<Holding, "id" | "createdAt">[] = [
 
 export async function initializeSampleData(): Promise<void> {
   const existing = await getHoldings();
+  
   if (existing.length === 0) {
-    for (const sample of SAMPLE_HOLDINGS) {
-      await saveHolding(sample);
+    const holdings: Holding[] = SAMPLE_HOLDINGS.map((sample, index) => ({
+      ...sample,
+      id: `sample-${index}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      createdAt: new Date().toISOString(),
+    }));
+    await AsyncStorage.setItem(HOLDINGS_KEY, JSON.stringify(holdings));
+  } else {
+    const idSet = new Set<string>();
+    let hasDuplicates = false;
+    
+    for (const holding of existing) {
+      if (idSet.has(holding.id)) {
+        hasDuplicates = true;
+        break;
+      }
+      idSet.add(holding.id);
+    }
+    
+    if (hasDuplicates) {
+      const fixedHoldings = existing.map((holding, index) => ({
+        ...holding,
+        id: `fixed-${index}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      }));
+      await AsyncStorage.setItem(HOLDINGS_KEY, JSON.stringify(fixedHoldings));
     }
   }
 }

@@ -104,30 +104,6 @@ export default function HoldingsScreen() {
     </Animated.View>
   );
 
-  const renderItem = ({ item, index }: { item: Holding; index: number }) => {
-    const change = item.currentPrice - item.purchasePrice;
-    const changePercent =
-      ((item.currentPrice - item.purchasePrice) / item.purchasePrice) * 100;
-
-    return (
-      <Animated.View
-        entering={FadeInDown.delay(index * 50).duration(300)}
-        layout={Layout.springify()}
-      >
-        <HoldingItem
-          name={item.name}
-          symbol={item.symbol}
-          value={item.currentPrice * item.quantity}
-          quantity={item.quantity}
-          change={change}
-          changePercent={changePercent}
-          type={item.type}
-          onPress={() => navigation.navigate("AssetDetail", { id: item.id })}
-        />
-      </Animated.View>
-    );
-  };
-
   const renderSectionList = () => {
     return sections.map((section, sectionIndex) => (
       <Animated.View
@@ -141,7 +117,30 @@ export default function HoldingsScreen() {
             ${section.totalValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </ThemedText>
         </View>
-        {section.data.map((item, index) => renderItem({ item, index }))}
+        {section.data.map((item, index) => {
+          const change = item.currentPrice - item.purchasePrice;
+          const changePercent =
+            ((item.currentPrice - item.purchasePrice) / item.purchasePrice) * 100;
+
+          return (
+            <Animated.View
+              key={item.id}
+              entering={FadeInDown.delay(index * 50).duration(300)}
+              layout={Layout.springify()}
+            >
+              <HoldingItem
+                name={item.name}
+                symbol={item.symbol}
+                value={item.currentPrice * item.quantity}
+                quantity={item.quantity}
+                change={change}
+                changePercent={changePercent}
+                type={item.type}
+                onPress={() => navigation.navigate("AssetDetail", { id: item.id })}
+              />
+            </Animated.View>
+          );
+        })}
       </Animated.View>
     ));
   };
