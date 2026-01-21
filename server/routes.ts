@@ -14,6 +14,10 @@ import {
   type ChatMessage,
   type PortfolioContext,
 } from "./services/geminiService";
+import {
+  searchAssets,
+  getPopularAssets,
+} from "./services/assetSearchService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/prices/crypto", async (req, res) => {
@@ -77,6 +81,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in /api/prices/batch:", error);
       res.status(500).json({ error: "Failed to fetch prices" });
+    }
+  });
+
+  app.get("/api/assets/search", async (req, res) => {
+    try {
+      const query = (req.query.q as string) || "";
+      const type = req.query.type as string | undefined;
+      
+      const results = await searchAssets(query, type);
+      res.json({ results, timestamp: Date.now() });
+    } catch (error) {
+      console.error("Error in /api/assets/search:", error);
+      res.status(500).json({ error: "Failed to search assets" });
+    }
+  });
+
+  app.get("/api/assets/popular/:type", (req, res) => {
+    try {
+      const { type } = req.params;
+      const results = getPopularAssets(type);
+      res.json({ results, timestamp: Date.now() });
+    } catch (error) {
+      console.error("Error in /api/assets/popular:", error);
+      res.status(500).json({ error: "Failed to get popular assets" });
     }
   });
 

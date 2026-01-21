@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  ActivityIndicator,
+  FlatList,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -19,6 +21,12 @@ import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 import { saveHolding, Holding } from "@/lib/storage";
+import {
+  searchAssets,
+  getPopularAssets,
+  fetchAssetPrice,
+  type AssetSearchResult,
+} from "@/lib/assetSearchService";
 
 type AssetType = Holding["type"];
 
@@ -36,33 +44,99 @@ export default function AddHoldingModal() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const [name, setName] = useState("");
-  const [symbol, setSymbol] = useState("");
   const [type, setType] = useState<AssetType>("stock");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<AssetSearchResult[]>([]);
+  const [popularAssets, setPopularAssets] = useState<AssetSearchResult[]>([]);
+  const [selectedAsset, setSelectedAsset] = useState<AssetSearchResult | null>(null);
   const [quantity, setQuantity] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [currentPrice, setCurrentPrice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+
+  useEffect(() => {
+    loadPopularAssets(type);
+    setSelectedAsset(null);
+    setSearchQuery("");
+    setSearchResults([]);
+    setCurrentPrice("");
+    setShowSearch(false);
+  }, [type]);
+
+  const loadPopularAssets = async (assetType: string) => {
+    const assets = await getPopularAssets(assetType);
+    setPopularAssets(assets);
+  };
+
+  const handleSearch = useCallback(
+    (query: string) => {
+      setSearchQuery(query);
+
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+
+      if (!query.trim()) {
+        setSearchResults([]);
+        setSearching(false);
+        return;
+      }
+
+      setSearching(true);
+      searchTimeout.current = setTimeout(async () => {
+        const results = await searchAssets(query, type);
+        setSearchResults(results);
+        setSearching(false);
+      }, 300);
+    },
+    [type]
+  );
+
+  const handleSelectAsset = async (asset: AssetSearchResult) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedAsset(asset);
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowSearch(false);
+
+    if (asset.type === "crypto" || asset.type === "stock" || asset.type === "etf") {
+      setFetchingPrice(true);
+      const price = await fetchAssetPrice(asset.symbol, asset.type, asset.id);
+      if (price !== null) {
+        setCurrentPrice(price.toFixed(2));
+      }
+      setFetchingPrice(false);
+    }
+  };
+
+  const handleTypeSelect = (assetType: AssetType) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setType(assetType);
+    setSelectedAsset(null);
+  };
 
   const isValid =
-    name.trim().length > 0 &&
-    symbol.trim().length > 0 &&
+    selectedAsset !== null &&
     parseFloat(quantity) > 0 &&
     parseFloat(purchasePrice) > 0 &&
     parseFloat(currentPrice) > 0;
 
   const handleSave = async () => {
-    if (!isValid) return;
+    if (!isValid || !selectedAsset) return;
 
     setSaving(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       await saveHolding({
-        name: name.trim(),
-        symbol: symbol.trim().toUpperCase(),
-        type,
+        name: selectedAsset.name,
+        symbol: selectedAsset.symbol.toUpperCase(),
+        type: selectedAsset.type,
         quantity: parseFloat(quantity),
         purchasePrice: parseFloat(purchasePrice),
         currentPrice: parseFloat(currentPrice),
@@ -90,6 +164,60 @@ export default function AddHoldingModal() {
     },
   ];
 
+  const renderAssetChip = (asset: AssetSearchResult, index: number) => (
+    <Animated.View
+      key={`${asset.id}-${asset.symbol}`}
+      entering={FadeInDown.delay(index * 30).duration(200)}
+    >
+      <Pressable
+        onPress={() => handleSelectAsset(asset)}
+        style={[
+          styles.assetChip,
+          {
+            backgroundColor: theme.backgroundSecondary,
+            borderColor: isDark ? theme.border : "transparent",
+            borderWidth: isDark ? 1 : 0,
+          },
+        ]}
+      >
+        <ThemedText type="caption" style={styles.chipSymbol}>
+          {asset.symbol}
+        </ThemedText>
+        <ThemedText
+          type="small"
+          style={{ color: theme.textSecondary }}
+          numberOfLines={1}
+        >
+          {asset.name}
+        </ThemedText>
+      </Pressable>
+    </Animated.View>
+  );
+
+  const renderSearchResult = ({ item }: { item: AssetSearchResult }) => (
+    <Pressable
+      onPress={() => handleSelectAsset(item)}
+      style={[
+        styles.searchResultItem,
+        { borderBottomColor: theme.border },
+      ]}
+    >
+      <View style={styles.searchResultContent}>
+        <ThemedText type="body" style={{ fontWeight: "600" }}>
+          {item.symbol}
+        </ThemedText>
+        <ThemedText
+          type="caption"
+          style={{ color: theme.textSecondary }}
+          numberOfLines={1}
+        >
+          {item.name}
+        </ThemedText>
+      </View>
+      <Feather name="plus" size={18} color={theme.primary} />
+    </Pressable>
+  );
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -113,10 +241,7 @@ export default function AddHoldingModal() {
               style={styles.typeItem}
             >
               <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setType(assetType.type);
-                }}
+                onPress={() => handleTypeSelect(assetType.type)}
                 style={[
                   styles.typeButton,
                   {
@@ -154,82 +279,196 @@ export default function AddHoldingModal() {
         </View>
       </Animated.View>
 
-      <Animated.View entering={FadeIn.delay(200).duration(300)}>
+      <Animated.View entering={FadeIn.delay(150).duration(300)}>
         <ThemedText type="h3" style={styles.sectionTitle}>
-          Details
+          Select Asset
         </ThemedText>
-        <Card style={styles.formCard}>
-          <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Asset Name
-            </ThemedText>
-            <TextInput
-              style={inputStyle}
-              placeholder="e.g., Apple Inc."
-              placeholderTextColor={theme.textSecondary}
-              value={name}
-              onChangeText={setName}
-            />
-          </View>
 
-          <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Symbol / Ticker
-            </ThemedText>
-            <TextInput
-              style={inputStyle}
-              placeholder="e.g., AAPL"
-              placeholderTextColor={theme.textSecondary}
-              value={symbol}
-              onChangeText={setSymbol}
-              autoCapitalize="characters"
-            />
-          </View>
-
-          <View style={styles.inputRow}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: Spacing.sm }]}>
-              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                Quantity
-              </ThemedText>
-              <TextInput
-                style={inputStyle}
-                placeholder="0"
-                placeholderTextColor={theme.textSecondary}
-                value={quantity}
-                onChangeText={setQuantity}
-                keyboardType="decimal-pad"
-              />
+        {selectedAsset ? (
+          <Card style={styles.selectedAssetCard}>
+            <View style={styles.selectedAssetContent}>
+              <View>
+                <ThemedText type="h4">{selectedAsset.symbol}</ThemedText>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  {selectedAsset.name}
+                </ThemedText>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setSelectedAsset(null);
+                  setCurrentPrice("");
+                }}
+                style={[styles.changeButton, { backgroundColor: theme.backgroundTertiary }]}
+              >
+                <ThemedText type="caption" style={{ color: theme.primary }}>
+                  Change
+                </ThemedText>
+              </Pressable>
             </View>
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                Purchase Price ($)
-              </ThemedText>
-              <TextInput
-                style={inputStyle}
-                placeholder="0.00"
-                placeholderTextColor={theme.textSecondary}
-                value={purchasePrice}
-                onChangeText={setPurchasePrice}
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
+            {fetchingPrice ? (
+              <View style={styles.priceLoading}>
+                <ActivityIndicator size="small" color={theme.primary} />
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.sm }}>
+                  Fetching current price...
+                </ThemedText>
+              </View>
+            ) : currentPrice ? (
+              <View style={styles.pricePreview}>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  Current Price
+                </ThemedText>
+                <ThemedText type="h4" style={{ color: theme.gainColor, fontFamily: Fonts?.mono }}>
+                  ${parseFloat(currentPrice).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </ThemedText>
+              </View>
+            ) : null}
+          </Card>
+        ) : (
+          <>
+            {showSearch ? (
+              <View style={styles.searchContainer}>
+                <View
+                  style={[
+                    styles.searchInputContainer,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      borderColor: isDark ? theme.border : "transparent",
+                      borderWidth: isDark ? 1 : 0,
+                    },
+                  ]}
+                >
+                  <Feather name="search" size={18} color={theme.textSecondary} />
+                  <TextInput
+                    style={[styles.searchInput, { color: theme.text, fontFamily: Fonts?.sans }]}
+                    placeholder={`Search ${ASSET_TYPES.find((t) => t.type === type)?.label || "assets"}...`}
+                    placeholderTextColor={theme.textSecondary}
+                    value={searchQuery}
+                    onChangeText={handleSearch}
+                    autoFocus
+                  />
+                  {searching ? (
+                    <ActivityIndicator size="small" color={theme.primary} />
+                  ) : searchQuery ? (
+                    <Pressable onPress={() => handleSearch("")}>
+                      <Feather name="x" size={18} color={theme.textSecondary} />
+                    </Pressable>
+                  ) : null}
+                </View>
 
-          <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Current Price ($)
-            </ThemedText>
-            <TextInput
-              style={inputStyle}
-              placeholder="0.00"
-              placeholderTextColor={theme.textSecondary}
-              value={currentPrice}
-              onChangeText={setCurrentPrice}
-              keyboardType="decimal-pad"
-            />
-          </View>
-        </Card>
+                <Pressable
+                  onPress={() => {
+                    setShowSearch(false);
+                    setSearchQuery("");
+                    setSearchResults([]);
+                  }}
+                  style={styles.cancelSearch}
+                >
+                  <ThemedText type="caption" style={{ color: theme.primary }}>
+                    Cancel
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {showSearch && searchResults.length > 0 ? (
+              <Card style={styles.searchResultsCard}>
+                <FlatList
+                  data={searchResults}
+                  keyExtractor={(item) => `${item.id}-${item.symbol}`}
+                  renderItem={renderSearchResult}
+                  scrollEnabled={false}
+                />
+              </Card>
+            ) : null}
+
+            {!showSearch ? (
+              <>
+                <Pressable
+                  onPress={() => setShowSearch(true)}
+                  style={[
+                    styles.searchTrigger,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      borderColor: isDark ? theme.border : "transparent",
+                      borderWidth: isDark ? 1 : 0,
+                    },
+                  ]}
+                >
+                  <Feather name="search" size={18} color={theme.textSecondary} />
+                  <ThemedText type="body" style={{ color: theme.textSecondary, marginLeft: Spacing.sm }}>
+                    Search for {ASSET_TYPES.find((t) => t.type === type)?.label || "asset"}...
+                  </ThemedText>
+                </Pressable>
+
+                {popularAssets.length > 0 ? (
+                  <View style={styles.popularSection}>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>
+                      Popular {ASSET_TYPES.find((t) => t.type === type)?.label}s
+                    </ThemedText>
+                    <View style={styles.chipsContainer}>
+                      {popularAssets.slice(0, 8).map((asset, index) => renderAssetChip(asset, index))}
+                    </View>
+                  </View>
+                ) : null}
+              </>
+            ) : null}
+          </>
+        )}
       </Animated.View>
+
+      {selectedAsset ? (
+        <Animated.View entering={FadeIn.delay(200).duration(300)}>
+          <ThemedText type="h3" style={styles.sectionTitle}>
+            Details
+          </ThemedText>
+          <Card style={styles.formCard}>
+            <View style={styles.inputRow}>
+              <View style={[styles.inputGroup, { flex: 1, marginRight: Spacing.sm }]}>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  Quantity
+                </ThemedText>
+                <TextInput
+                  style={inputStyle}
+                  placeholder="0"
+                  placeholderTextColor={theme.textSecondary}
+                  value={quantity}
+                  onChangeText={setQuantity}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  Purchase Price ($)
+                </ThemedText>
+                <TextInput
+                  style={inputStyle}
+                  placeholder="0.00"
+                  placeholderTextColor={theme.textSecondary}
+                  value={purchasePrice}
+                  onChangeText={setPurchasePrice}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+
+            {!currentPrice && !fetchingPrice ? (
+              <View style={styles.inputGroup}>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  Current Price ($)
+                </ThemedText>
+                <TextInput
+                  style={inputStyle}
+                  placeholder="0.00"
+                  placeholderTextColor={theme.textSecondary}
+                  value={currentPrice}
+                  onChangeText={setCurrentPrice}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            ) : null}
+          </Card>
+        </Animated.View>
+      ) : null}
 
       {isValid ? (
         <Animated.View entering={FadeIn.delay(100).duration(300)}>
@@ -300,11 +539,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginBottom: Spacing.md,
+    marginTop: Spacing.lg,
   },
   typeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: Spacing.lg,
     marginHorizontal: -Spacing.xs,
   },
   typeItem: {
@@ -320,6 +559,94 @@ const styles = StyleSheet.create({
   typeLabel: {
     marginTop: Spacing.xs,
     fontWeight: "500",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    height: Spacing.inputHeight,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    marginLeft: Spacing.sm,
+  },
+  cancelSearch: {
+    padding: Spacing.sm,
+  },
+  searchTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: Spacing.inputHeight,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  popularSection: {
+    marginTop: Spacing.lg,
+  },
+  chipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  assetChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    minWidth: 80,
+  },
+  chipSymbol: {
+    fontWeight: "600",
+  },
+  searchResultsCard: {
+    marginTop: Spacing.sm,
+    maxHeight: 300,
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  searchResultContent: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  selectedAssetCard: {
+    marginBottom: Spacing.sm,
+  },
+  selectedAssetContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  changeButton: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
+  priceLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  pricePreview: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   formCard: {
     marginBottom: Spacing.lg,
