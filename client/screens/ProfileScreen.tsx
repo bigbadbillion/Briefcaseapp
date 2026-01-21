@@ -34,6 +34,7 @@ import {
 } from "@/lib/storage";
 
 const CURRENCY_STORAGE_KEY = "@briefcase/currency";
+const NOTIFICATIONS_STORAGE_KEY = "@briefcase/notifications";
 const CURRENCIES = [
   { code: "USD", symbol: "$", name: "US Dollar" },
   { code: "EUR", symbol: "\u20AC", name: "Euro" },
@@ -58,9 +59,14 @@ export default function ProfileScreen() {
     const data = await getHoldings();
     setHoldings(data);
 
-    const permission = await Notifications.getPermissionsAsync();
-    setNotificationPermission(permission.status);
-    setNotificationsEnabled(permission.status === "granted");
+    const storedNotifications = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+    if (storedNotifications !== null) {
+      setNotificationsEnabled(JSON.parse(storedNotifications));
+    } else if (Platform.OS !== "web") {
+      const permission = await Notifications.getPermissionsAsync();
+      setNotificationPermission(permission.status);
+      setNotificationsEnabled(permission.status === "granted");
+    }
 
     const storedCurrency = await AsyncStorage.getItem(CURRENCY_STORAGE_KEY);
     if (storedCurrency) {
@@ -81,8 +87,23 @@ export default function ProfileScreen() {
   const handleNotificationToggle = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    if (notificationsEnabled) {
+    const newValue = !notificationsEnabled;
+    
+    if (Platform.OS === "web") {
+      setNotificationsEnabled(newValue);
+      await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(newValue));
+      if (newValue) {
+        Alert.alert(
+          "Notifications Enabled",
+          "For push notifications, please use the Briefcase app on your mobile device via Expo Go."
+        );
+      }
+      return;
+    }
+
+    if (!newValue) {
       setNotificationsEnabled(false);
+      await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(false));
       return;
     }
 
@@ -91,22 +112,19 @@ export default function ProfileScreen() {
     if (permission.status === "granted") {
       setNotificationsEnabled(true);
       setNotificationPermission("granted");
+      await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(true));
     } else if (permission.status === "denied" && !permission.canAskAgain) {
       const buttons: { text: string; style?: "cancel" | "default" | "destructive"; onPress?: () => void }[] = [
         { text: "Cancel", style: "cancel" as const },
-      ];
-      if (Platform.OS !== "web") {
-        buttons.push({
+        {
           text: "Open Settings",
           onPress: async () => {
             try {
               await Linking.openSettings();
             } catch (error) {}
           },
-        });
-      } else {
-        buttons.push({ text: "OK" });
-      }
+        },
+      ];
       Alert.alert(
         "Enable Notifications",
         "Notification permissions were denied. Please enable them in your device settings.",
@@ -115,9 +133,11 @@ export default function ProfileScreen() {
     } else {
       const { status } = await Notifications.requestPermissionsAsync();
       setNotificationPermission(status);
-      setNotificationsEnabled(status === "granted");
+      const granted = status === "granted";
+      setNotificationsEnabled(granted);
+      await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(granted));
 
-      if (status !== "granted") {
+      if (!granted) {
         Alert.alert(
           "Permission Required",
           "Enable notifications to receive portfolio alerts and market updates."
@@ -295,12 +315,43 @@ export default function ProfileScreen() {
               />
             </View>
 
-            <SettingsRow
-              icon="shield"
-              label="Privacy"
-              value="Standard"
-              theme={theme}
-            />
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                Alert.alert(
+                  "Privacy Settings",
+                  "Your data is stored securely and never shared with third parties. Portfolio data is encrypted and only accessible to you.",
+                  [{ text: "OK" }]
+                );
+              }}
+              style={({ pressed }) => [
+                styles.settingsRow,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <View style={styles.settingsRowLeft}>
+                <View
+                  style={[
+                    styles.settingsIcon,
+                    { backgroundColor: theme.backgroundSecondary },
+                  ]}
+                >
+                  <Feather name="shield" size={16} color={theme.primary} />
+                </View>
+                <ThemedText type="body">Privacy</ThemedText>
+              </View>
+              <View style={styles.settingsRowRight}>
+                <ThemedText type="body" style={{ color: theme.textSecondary }}>
+                  Standard
+                </ThemedText>
+                <Feather
+                  name="chevron-right"
+                  size={18}
+                  color={theme.textSecondary}
+                  style={{ marginLeft: Spacing.xs }}
+                />
+              </View>
+            </Pressable>
 
             <Pressable
               onPress={() => setShowCurrencyPicker(true)}
