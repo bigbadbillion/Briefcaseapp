@@ -1,12 +1,12 @@
 import { Text, type TextProps } from "react-native";
 
 import { useTheme } from "@/hooks/useTheme";
-import { Typography } from "@/constants/theme";
+import { Typography, Fonts } from "@/constants/theme";
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: "h1" | "h2" | "h3" | "h4" | "body" | "small" | "link";
+  type?: "display" | "h1" | "h2" | "h3" | "h4" | "body" | "small" | "caption" | "mono" | "link";
 };
 
 export function ThemedText({
@@ -36,22 +36,28 @@ export function ThemedText({
 
   const getTypeStyle = () => {
     switch (type) {
+      case "display":
+        return { ...Typography.display, fontFamily: Fonts?.sansBold };
       case "h1":
-        return Typography.h1;
+        return { ...Typography.h1, fontFamily: Fonts?.sansSemiBold };
       case "h2":
-        return Typography.h2;
+        return { ...Typography.h2, fontFamily: Fonts?.sansSemiBold };
       case "h3":
-        return Typography.h3;
+        return { ...Typography.h3, fontFamily: Fonts?.sansSemiBold };
       case "h4":
-        return Typography.h4;
+        return { ...Typography.h4, fontFamily: Fonts?.sansSemiBold };
       case "body":
-        return Typography.body;
+        return { ...Typography.body, fontFamily: Fonts?.sans };
       case "small":
-        return Typography.small;
+        return { ...Typography.small, fontFamily: Fonts?.sans };
+      case "caption":
+        return { ...Typography.caption, fontFamily: Fonts?.sans };
+      case "mono":
+        return { ...Typography.mono, fontFamily: Fonts?.mono };
       case "link":
-        return Typography.link;
+        return { ...Typography.link, fontFamily: Fonts?.sans };
       default:
-        return Typography.body;
+        return { ...Typography.body, fontFamily: Fonts?.sans };
     }
   };
 
