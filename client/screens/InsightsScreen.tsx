@@ -15,7 +15,7 @@ import { SkeletonLoader } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 import {
-  getHoldings,
+  getHoldingsWithLivePrices,
   calculatePortfolioMetrics,
   initializeSampleData,
   Holding,
@@ -41,7 +41,7 @@ export default function InsightsScreen() {
 
   const loadData = useCallback(async () => {
     await initializeSampleData();
-    const data = await getHoldings();
+    const data = await getHoldingsWithLivePrices();
     setHoldings(data);
     setLoading(false);
   }, []);

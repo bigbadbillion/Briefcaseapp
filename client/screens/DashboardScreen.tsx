@@ -25,6 +25,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, Fonts, BorderRadius } from "@/constants/theme";
 import {
   getHoldings,
+  getHoldingsWithLivePrices,
   calculatePortfolioMetrics,
   initializeSampleData,
   Holding,
@@ -55,7 +56,7 @@ export default function DashboardScreen() {
 
   const loadData = useCallback(async () => {
     await initializeSampleData();
-    const data = await getHoldings();
+    const data = await getHoldingsWithLivePrices();
     setHoldings(data);
     setLoading(false);
   }, []);
@@ -71,12 +72,8 @@ export default function DashboardScreen() {
     const oldMetrics = calculatePortfolioMetrics(holdings);
     setPreviousValue(oldMetrics.totalValue);
 
-    const data = await getHoldings();
-    const updatedHoldings = data.map((h) => ({
-      ...h,
-      currentPrice: h.currentPrice * (1 + (Math.random() - 0.45) * 0.02),
-    }));
-    setHoldings(updatedHoldings);
+    const data = await getHoldingsWithLivePrices();
+    setHoldings(data);
     setRefreshing(false);
   }, [holdings]);
 

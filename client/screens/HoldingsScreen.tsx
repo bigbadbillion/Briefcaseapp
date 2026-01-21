@@ -14,7 +14,7 @@ import { SkeletonLoader } from "@/components/SkeletonLoader";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
-import { getHoldings, Holding, initializeSampleData } from "@/lib/storage";
+import { getHoldingsWithLivePrices, Holding, initializeSampleData } from "@/lib/storage";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 const emptyPortfolioImage = require("../assets/images/empty-portfolio.png");
@@ -33,7 +33,7 @@ export default function HoldingsScreen() {
 
   const loadData = useCallback(async () => {
     await initializeSampleData();
-    const data = await getHoldings();
+    const data = await getHoldingsWithLivePrices();
     setHoldings(data);
     setLoading(false);
   }, []);

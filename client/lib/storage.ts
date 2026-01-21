@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { fetchAllPrices, createPriceMap, isCryptoSymbol, type PriceData } from "./priceService";
 
 export interface Holding {
   id: string;
@@ -84,6 +85,50 @@ export async function clearAllHoldings(): Promise<void> {
 export function generateMockPrice(basePrice: number): number {
   const change = (Math.random() - 0.5) * 0.1;
   return basePrice * (1 + change);
+}
+
+export async function updateHoldingsWithLivePrices(): Promise<{
+  holdings: Holding[];
+  updated: number;
+  failed: string[];
+}> {
+  try {
+    const holdings = await getHoldings();
+    if (holdings.length === 0) {
+      return { holdings: [], updated: 0, failed: [] };
+    }
+
+    const symbols = holdings.map((h) => h.symbol);
+    const priceResponse = await fetchAllPrices(symbols);
+    const priceMap = createPriceMap(priceResponse.prices);
+
+    let updated = 0;
+    const failed: string[] = [];
+
+    const updatedHoldings = holdings.map((holding) => {
+      const priceData = priceMap.get(holding.symbol.toUpperCase());
+      if (priceData) {
+        updated++;
+        return { ...holding, currentPrice: priceData.price };
+      } else {
+        failed.push(holding.symbol);
+        return holding;
+      }
+    });
+
+    await AsyncStorage.setItem(HOLDINGS_KEY, JSON.stringify(updatedHoldings));
+
+    return { holdings: updatedHoldings, updated, failed };
+  } catch (error) {
+    console.error("Error updating holdings with live prices:", error);
+    const holdings = await getHoldings();
+    return { holdings, updated: 0, failed: holdings.map((h) => h.symbol) };
+  }
+}
+
+export async function getHoldingsWithLivePrices(): Promise<Holding[]> {
+  const result = await updateHoldingsWithLivePrices();
+  return result.holdings;
 }
 
 export function calculatePortfolioMetrics(holdings: Holding[]) {
