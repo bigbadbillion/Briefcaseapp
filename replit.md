@@ -27,12 +27,15 @@ Preferred communication style: Simple, everyday language.
 - **Server**: Express.js (v5) running on Node.js
 - **API Design**: RESTful endpoints prefixed with `/api`
 - **Database**: PostgreSQL with Drizzle ORM (schema in `shared/schema.ts`)
-- **Storage Pattern**: Currently uses in-memory storage (`MemStorage`) with interface for database migration
+- **Authentication**: Custom auth system with bcrypt password hashing, session tokens, and email verification
+- **Landing Page**: Professional editorial-style landing page served at `/` with 3D animated hero and pricing
 
 ### Data Flow
-- Client stores holdings locally in AsyncStorage for offline-first experience
+- User authentication with email verification before full access
+- Holdings stored in PostgreSQL database with user association
 - Real-time prices fetched from backend which aggregates multiple data sources
 - AI features communicate through dedicated API endpoints to Gemini service
+- User settings (theme, currency, notifications) stored client-side in AsyncStorage
 
 ### Key Design Patterns
 - Path aliases: `@/` maps to `./client`, `@shared/` maps to `./shared`
@@ -59,7 +62,19 @@ Preferred communication style: Simple, everyday language.
 - `DATABASE_URL` - PostgreSQL connection string
 - `GEMINI_API_KEY` - Google Gemini API key for AI features (get from https://aistudio.google.com/app/apikey)
 - `FINNHUB_API_KEY` - For stock/ETF price data (get free key from https://finnhub.io/register - 60 calls/min)
+- `SESSION_SECRET` - Secret for session token signing
 - `EXPO_PUBLIC_DOMAIN` - Public domain for API requests from client
+
+## Authentication System
+- Custom auth (Replit Auth not supported for mobile apps)
+- Email/password registration with bcrypt hashing
+- Email verification tokens (24-hour expiry)
+- Session-based authentication with PostgreSQL-stored tokens
+- API endpoints: `/api/auth/register`, `/api/auth/login`, `/api/auth/verify/:token`
+
+## Pricing Model
+- **Free Tier**: Portfolio tracking, real-time prices, basic analytics
+- **Premium ($4.99/month)**: AI-powered insights, portfolio optimization, custom alerts
 
 ## Smart Asset Entry
 The Add Holding flow provides intelligent assistance:
