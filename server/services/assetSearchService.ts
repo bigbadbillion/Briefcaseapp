@@ -11,16 +11,16 @@ export interface AssetSearchResult {
 }
 
 const POPULAR_CRYPTO: AssetSearchResult[] = [
-  { id: "bitcoin", symbol: "BTC", name: "Bitcoin", type: "crypto" },
-  { id: "ethereum", symbol: "ETH", name: "Ethereum", type: "crypto" },
-  { id: "solana", symbol: "SOL", name: "Solana", type: "crypto" },
-  { id: "cardano", symbol: "ADA", name: "Cardano", type: "crypto" },
-  { id: "ripple", symbol: "XRP", name: "XRP", type: "crypto" },
-  { id: "polkadot", symbol: "DOT", name: "Polkadot", type: "crypto" },
-  { id: "dogecoin", symbol: "DOGE", name: "Dogecoin", type: "crypto" },
-  { id: "avalanche-2", symbol: "AVAX", name: "Avalanche", type: "crypto" },
-  { id: "chainlink", symbol: "LINK", name: "Chainlink", type: "crypto" },
-  { id: "uniswap", symbol: "UNI", name: "Uniswap", type: "crypto" },
+  { id: "bitcoin", symbol: "BTC", name: "Bitcoin", type: "crypto", imageUrl: "https://assets.coingecko.com/coins/images/1/thumb/bitcoin.png" },
+  { id: "ethereum", symbol: "ETH", name: "Ethereum", type: "crypto", imageUrl: "https://assets.coingecko.com/coins/images/279/thumb/ethereum.png" },
+  { id: "solana", symbol: "SOL", name: "Solana", type: "crypto", imageUrl: "https://assets.coingecko.com/coins/images/4128/thumb/solana.png" },
+  { id: "cardano", symbol: "ADA", name: "Cardano", type: "crypto", imageUrl: "https://assets.coingecko.com/coins/images/975/thumb/cardano.png" },
+  { id: "ripple", symbol: "XRP", name: "XRP", type: "crypto", imageUrl: "https://assets.coingecko.com/coins/images/44/thumb/xrp-symbol-white-128.png" },
+  { id: "polkadot", symbol: "DOT", name: "Polkadot", type: "crypto", imageUrl: "https://assets.coingecko.com/coins/images/12171/thumb/polkadot.png" },
+  { id: "dogecoin", symbol: "DOGE", name: "Dogecoin", type: "crypto", imageUrl: "https://assets.coingecko.com/coins/images/5/thumb/dogecoin.png" },
+  { id: "avalanche-2", symbol: "AVAX", name: "Avalanche", type: "crypto", imageUrl: "https://assets.coingecko.com/coins/images/12559/thumb/Avalanche_Circle_RedWhite_Trans.png" },
+  { id: "chainlink", symbol: "LINK", name: "Chainlink", type: "crypto", imageUrl: "https://assets.coingecko.com/coins/images/877/thumb/chainlink-new-logo.png" },
+  { id: "uniswap", symbol: "UNI", name: "Uniswap", type: "crypto", imageUrl: "https://assets.coingecko.com/coins/images/12504/thumb/uniswap-logo.png" },
 ];
 
 const POPULAR_STOCKS: AssetSearchResult[] = [
