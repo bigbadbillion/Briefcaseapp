@@ -15,7 +15,8 @@ import { eq, and, gt } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: InsertUser & { verificationToken?: string; verificationExpires?: Date }): Promise<User>;
+  getUserByAppleId(appleId: string): Promise<User | undefined>;
+  createUser(user: InsertUser & { verificationToken?: string; verificationExpires?: Date; appleId?: string; emailVerified?: boolean }): Promise<User>;
   updateUser(id: string, data: Partial<User>): Promise<User | undefined>;
   
   createSession(userId: string, token: string, expiresAt: Date): Promise<Session>;
@@ -43,7 +44,12 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
-  async createUser(insertUser: InsertUser & { verificationToken?: string; verificationExpires?: Date }): Promise<User> {
+  async getUserByAppleId(appleId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.appleId, appleId));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser & { verificationToken?: string; verificationExpires?: Date; appleId?: string; emailVerified?: boolean }): Promise<User> {
     const [user] = await db
       .insert(users)
       .values({

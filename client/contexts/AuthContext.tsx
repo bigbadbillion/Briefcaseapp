@@ -13,6 +13,13 @@ interface User {
   isPremium: boolean;
 }
 
+interface AppleAuthData {
+  identityToken: string;
+  email: string | null;
+  fullName: { givenName?: string; familyName?: string } | null;
+  user: string;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
@@ -20,6 +27,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string; verificationToken?: string }>;
+  signInWithApple: (data: AppleAuthData) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   verifyEmail: (token: string) => Promise<{ success: boolean; error?: string }>;
 }
@@ -129,6 +137,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const signInWithApple = useCallback(async (data: AppleAuthData) => {
+    try {
+      const response = await fetch(new URL("/api/auth/apple", getApiUrl()).toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: responseData.error || responseData.message || "Apple sign-in failed" };
+      }
+
+      if (responseData.success && responseData.token && responseData.user) {
+        await AsyncStorage.setItem(AUTH_TOKEN_KEY, responseData.token);
+        await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(responseData.user));
+        setToken(responseData.token);
+        setUser(responseData.user);
+        return { success: true };
+      }
+
+      return { success: false, error: responseData.error || responseData.message || "Apple sign-in failed" };
+    } catch (error) {
+      return { success: false, error: "Network error. Please try again." };
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
@@ -147,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!token && !!user,
     signIn,
     signUp,
+    signInWithApple,
     signOut,
     verifyEmail,
   };

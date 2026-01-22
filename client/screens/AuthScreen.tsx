@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as AppleAuthentication from "expo-apple-authentication";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
@@ -26,7 +27,12 @@ type AuthMode = "login" | "register" | "verify";
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { signIn, signUp, verifyEmail } = useAuth();
+  const { signIn, signUp, signInWithApple, verifyEmail } = useAuth();
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+  React.useEffect(() => {
+    AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
+  }, []);
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -112,6 +118,48 @@ export default function AuthScreen() {
     setMode(newMode);
   };
 
+  const handleAppleSignIn = async () => {
+    try {
+      setLoading(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        Alert.alert("Error", "Apple Sign-In failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      const result = await signInWithApple({
+        identityToken: credential.identityToken,
+        email: credential.email,
+        fullName: credential.fullName ? {
+          givenName: credential.fullName.givenName || undefined,
+          familyName: credential.fullName.familyName || undefined,
+        } : null,
+        user: credential.user,
+      });
+
+      setLoading(false);
+
+      if (!result.success) {
+        Alert.alert("Sign In Failed", result.error || "Please try again.");
+      }
+    } catch (error: any) {
+      setLoading(false);
+      if (error.code === "ERR_REQUEST_CANCELED") {
+        return;
+      }
+      Alert.alert("Error", "Apple Sign-In failed. Please try again.");
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -148,12 +196,11 @@ export default function AuthScreen() {
 
             {mode === "verify" ? (
               <>
-                <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
-                  {pendingVerificationToken 
-                    ? "For testing: Click verify below to complete registration."
-                    : "Enter the verification code from your email."}
+                <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg, textAlign: "center" }}>
+                  We've sent a verification email to your inbox. Click the link in the email or enter the code below.
                 </ThemedText>
                 <View style={styles.inputContainer}>
+                  <Feather name="key" size={20} color={theme.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={[
                       styles.input,
@@ -163,14 +210,14 @@ export default function AuthScreen() {
                         borderColor: theme.border,
                       },
                     ]}
-                    placeholder="Verification code (optional for testing)"
+                    placeholder="Verification code"
                     placeholderTextColor={theme.textSecondary}
                     value={verificationToken}
                     onChangeText={setVerificationToken}
-                    autoCapitalize="none"
+                    autoCapitalize="characters"
                   />
                 </View>
-                <Button onPress={handleVerify} disabled={loading} style={styles.button}>
+                <Button onPress={handleVerify} disabled={loading || (!verificationToken && !pendingVerificationToken)} style={styles.button}>
                   {loading ? "Verifying..." : "Verify Email"}
                 </Button>
                 <Pressable onPress={() => switchMode("login")} style={styles.switchMode}>
@@ -262,6 +309,25 @@ export default function AuthScreen() {
                   {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
                 </Button>
 
+                {appleAuthAvailable && mode === "login" ? (
+                  <>
+                    <View style={styles.divider}>
+                      <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, paddingHorizontal: Spacing.md }}>
+                        or
+                      </ThemedText>
+                      <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                    </View>
+                    <AppleAuthentication.AppleAuthenticationButton
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                      cornerRadius={BorderRadius.md}
+                      style={styles.appleButton}
+                      onPress={handleAppleSignIn}
+                    />
+                  </>
+                ) : null}
+
                 <Pressable
                   onPress={() => switchMode(mode === "login" ? "register" : "login")}
                   style={styles.switchMode}
@@ -341,6 +407,19 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: Spacing.md,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: Spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  appleButton: {
+    width: "100%",
+    height: 48,
   },
   switchMode: {
     alignItems: "center",

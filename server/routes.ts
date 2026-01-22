@@ -26,6 +26,7 @@ import {
   validateSession,
   logout,
   getUserFromToken,
+  authenticateWithApple,
 } from "./services/authService";
 import { storage } from "./storage";
 import { registerSchema, loginSchema, holdingSchema } from "@shared/schema";
@@ -122,6 +123,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in /api/auth/login:", error);
       res.status(500).json({ error: "Failed to log in" });
+    }
+  });
+
+  app.post("/api/auth/apple", async (req, res) => {
+    try {
+      const { identityToken, email, fullName, user } = req.body;
+
+      if (!identityToken || !user) {
+        return res.status(400).json({ error: "Missing Apple authentication data" });
+      }
+
+      const result = await authenticateWithApple(
+        identityToken,
+        email || null,
+        fullName || null,
+        user
+      );
+
+      if (!result.success) {
+        return res.status(401).json({ error: result.error });
+      }
+
+      res.json({
+        success: true,
+        user: result.user,
+        token: result.token,
+      });
+    } catch (error) {
+      console.error("Error in /api/auth/apple:", error);
+      res.status(500).json({ error: "Apple authentication failed" });
     }
   });
 
