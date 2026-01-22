@@ -124,22 +124,22 @@ export default function DashboardScreen() {
           />
           <View style={styles.changeContainer}>
             <Feather
-              name={metrics.totalGain >= 0 ? "trending-up" : "trending-down"}
+              name={metrics.totalGainLoss >= 0 ? "trending-up" : "trending-down"}
               size={16}
-              color={metrics.totalGain >= 0 ? theme.gainColor : theme.lossColor}
+              color={metrics.totalGainLoss >= 0 ? theme.gainColor : theme.lossColor}
             />
             <ThemedText
               type="body"
               style={[
                 styles.changeText,
-                { color: metrics.totalGain >= 0 ? theme.gainColor : theme.lossColor },
+                { color: metrics.totalGainLoss >= 0 ? theme.gainColor : theme.lossColor },
               ]}
             >
-              {metrics.totalGain >= 0 ? "+" : ""}
-              ${Math.abs(metrics.totalGain).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              {metrics.totalGainLoss >= 0 ? "+" : ""}
+              ${Math.abs(metrics.totalGainLoss).toLocaleString("en-US", { minimumFractionDigits: 2 })}
               {" ("}
-              {metrics.totalGainPercent >= 0 ? "+" : ""}
-              {metrics.totalGainPercent.toFixed(2)}%)
+              {metrics.totalGainLossPercent >= 0 ? "+" : ""}
+              {metrics.totalGainLossPercent.toFixed(2)}%)
             </ThemedText>
           </View>
         </Card>

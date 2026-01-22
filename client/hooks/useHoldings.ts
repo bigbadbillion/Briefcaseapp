@@ -181,8 +181,8 @@ export function calculatePortfolioMetrics(holdings: Holding[]) {
     (sum, h) => sum + h.purchasePrice * h.quantity,
     0
   );
-  const totalGain = totalValue - totalCost;
-  const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+  const totalGainLoss = totalValue - totalCost;
+  const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
   const typeAllocation = holdings.reduce((acc, h) => {
     const value = h.currentPrice * h.quantity;
@@ -212,8 +212,8 @@ export function calculatePortfolioMetrics(holdings: Holding[]) {
   return {
     totalValue,
     totalCost,
-    totalGain,
-    totalGainPercent,
+    totalGainLoss,
+    totalGainLossPercent,
     typeAllocation,
     bestPerformer,
     worstPerformer,
