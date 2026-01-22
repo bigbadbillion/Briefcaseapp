@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState, AppStateStatus } from "react-native";
 import { getApiUrl } from "@/lib/query-client";
 
 const AUTH_TOKEN_KEY = "@briefcase/auth_token";
@@ -31,6 +32,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   verifyEmail: (token: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (name: string) => Promise<{ success: boolean; error?: string }>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,10 +41,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     loadStoredAuth();
   }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+    return () => {
+      subscription.remove();
+    };
+  }, [token]);
+
+  const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+    if (appState.current.match(/inactive|background/) && nextAppState === "active") {
+      if (token) {
+        await refreshUserData();
+      }
+    }
+    appState.current = nextAppState;
+  };
+
+  const refreshUserData = async () => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(new URL("/api/auth/me", getApiUrl()).toString(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+          setUser(data.user);
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing user:", error);
+    }
+  };
 
   const loadStoredAuth = async () => {
     try {
@@ -211,6 +250,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [token, user]);
 
+  const refreshUser = useCallback(async () => {
+    await refreshUserData();
+  }, [token]);
+
   const value: AuthContextType = {
     user,
     token,
@@ -222,6 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     verifyEmail,
     updateProfile,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

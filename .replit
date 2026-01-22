@@ -76,3 +76,4 @@ ensurePreviewReachable = "/status"
 [userenv]
 
 [userenv.shared]
+EXPO_PUBLIC_DOMAIN = "4e70daf1-7a37-4c7d-870d-0f5111b4767b-00-1n7aa7mel0bw1.picard.replit.dev"
