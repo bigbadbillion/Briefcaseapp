@@ -26,8 +26,13 @@ export async function sendVerificationEmail(
 
   try {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    // Production domains (like briefcaseapp.replit.app) use standard HTTPS (port 443)
+    // Development domains (like *.picard.replit.dev) need port 5000
+    const isProduction = domain && !domain.includes('.picard.replit.dev') && !domain.includes(':');
     const baseUrl = domain 
-      ? `https://${domain}:5000`
+      ? isProduction 
+        ? `https://${domain}`
+        : `https://${domain.replace(':5000', '')}:5000`
       : 'http://localhost:5000';
     const verificationUrl = `${baseUrl}/api/auth/verify/${verificationToken}`;
     
