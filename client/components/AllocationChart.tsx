@@ -40,6 +40,10 @@ export function AllocationChart({ data, size = 160 }: AllocationChartProps) {
   const { theme } = useTheme();
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
+  if (!data.length || total === 0) {
+    return null;
+  }
+
   const radius = size / 2 - 8;
   const innerRadius = radius * 0.6;
   const centerX = size / 2;

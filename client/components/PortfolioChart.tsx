@@ -36,7 +36,12 @@ export function PortfolioChart({
     });
   }, [data]);
 
-  if (data.length < 2) {
+  if (data.length < 2 || data.every(v => !isFinite(v) || isNaN(v))) {
+    return null;
+  }
+
+  const validData = data.filter(v => isFinite(v) && !isNaN(v));
+  if (validData.length < 2) {
     return null;
   }
 
@@ -46,12 +51,15 @@ export function PortfolioChart({
 
   const minValue = Math.min(...data) * 0.95;
   const maxValue = Math.max(...data) * 1.05;
-  const valueRange = maxValue - minValue;
+  const valueRange = maxValue - minValue || 1;
 
-  const points = data.map((value, index) => ({
-    x: padding.left + (index / (data.length - 1)) * chartWidth,
-    y: padding.top + chartHeight - ((value - minValue) / valueRange) * chartHeight,
-  }));
+  const points = data.map((value, index) => {
+    const safeValue = isFinite(value) && !isNaN(value) ? value : minValue;
+    return {
+      x: padding.left + (index / (data.length - 1)) * chartWidth,
+      y: padding.top + chartHeight - ((safeValue - minValue) / valueRange) * chartHeight,
+    };
+  });
 
   const createSmoothPath = () => {
     if (points.length < 2) return "";

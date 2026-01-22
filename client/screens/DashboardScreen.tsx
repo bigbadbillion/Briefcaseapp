@@ -152,7 +152,13 @@ export default function DashboardScreen() {
           </View>
           <TimeRangeSelector selected={timeRange} onSelect={setTimeRange} />
           <View style={styles.chartContainer}>
-            <PortfolioChart data={generateChartData()} height={160} />
+            {holdings.length > 0 && metrics.totalValue > 0 ? (
+              <PortfolioChart data={generateChartData()} height={160} />
+            ) : (
+              <ThemedText type="body" style={{ color: theme.textSecondary }}>
+                Add holdings to see performance
+              </ThemedText>
+            )}
           </View>
         </Card>
       </Animated.View>
