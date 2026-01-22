@@ -21,7 +21,8 @@ export async function sendVerificationEmail(
     return { success: false, error: 'Email service not configured' };
   }
 
-  console.log(`Attempting to send verification email to: ${to}`);
+  console.log(`[EMAIL] Attempting to send verification email to: ${to}`);
+  console.log(`[EMAIL] Using FROM_EMAIL: ${FROM_EMAIL}`);
 
   try {
     const baseUrl = process.env.EXPO_PUBLIC_DOMAIN 
@@ -29,7 +30,9 @@ export async function sendVerificationEmail(
       : 'http://localhost:5000';
     const verificationUrl = `${baseUrl}/api/auth/verify/${verificationToken}`;
     
-    const { error } = await resend.emails.send({
+    console.log(`[EMAIL] Verification URL: ${verificationUrl}`);
+    
+    const { data, error } = await resend.emails.send({
       from: `${APP_NAME} <${FROM_EMAIL}>`,
       to: [to],
       subject: `Verify your ${APP_NAME} account`,
@@ -113,7 +116,7 @@ If you didn't create an account, you can safely ignore this email.
     });
 
     if (error) {
-      console.error('Resend error:', JSON.stringify(error, null, 2));
+      console.error('[EMAIL] Resend API error:', JSON.stringify(error, null, 2));
       const errorMessage = error.message || 'Email send failed';
       if (errorMessage.includes('sandbox') || errorMessage.includes('verify')) {
         return { 
@@ -124,10 +127,12 @@ If you didn't create an account, you can safely ignore this email.
       return { success: false, error: errorMessage };
     }
 
-    console.log(`Verification email sent successfully to: ${to}`);
+    console.log(`[EMAIL] Verification email sent successfully to: ${to}`);
+    console.log(`[EMAIL] Resend response:`, JSON.stringify(data, null, 2));
     return { success: true };
   } catch (error: any) {
-    console.error('Email send error:', error?.message || error);
+    console.error('[EMAIL] Email send exception:', error?.message || error);
+    console.error('[EMAIL] Full error:', error);
     return { success: false, error: error?.message || 'Failed to send verification email' };
   }
 }

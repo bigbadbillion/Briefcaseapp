@@ -54,6 +54,7 @@ export async function register(
     });
 
     // Send real verification email
+    console.log(`[AUTH] Sending verification email for user: ${email}`);
     const emailResult = await sendVerificationEmail(
       email,
       name || email.split('@')[0],
@@ -61,7 +62,9 @@ export async function register(
     );
 
     if (!emailResult.success) {
-      console.warn('Failed to send verification email:', emailResult.error);
+      console.warn(`[AUTH] Failed to send verification email to ${email}:`, emailResult.error);
+    } else {
+      console.log(`[AUTH] Verification email sent successfully to ${email}`);
     }
 
     return {
