@@ -45,6 +45,7 @@ export const holdings = pgTable("holdings", {
   purchasePrice: decimal("purchase_price", { precision: 18, scale: 8 }).notNull(),
   purchaseDate: timestamp("purchase_date"),
   notes: text("notes"),
+  imageUrl: text("image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -87,6 +88,7 @@ export const holdingSchema = z.object({
   purchasePrice: z.number().positive(),
   purchaseDate: z.string().optional(),
   notes: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
