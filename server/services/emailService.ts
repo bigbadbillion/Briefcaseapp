@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const APP_NAME = 'Briefcase';
-const FROM_EMAIL = 'onboarding@resend.dev';
+const FROM_EMAIL = 'ugo@echovault.me';
 
 console.log(`Email service initialized: ${resend ? 'Resend configured' : 'Resend not configured (missing RESEND_API_KEY)'}`);
 
