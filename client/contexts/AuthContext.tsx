@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
 
       if (!response.ok) {
-        return { success: false, error: data.message || "Login failed" };
+        return { success: false, error: data.error || data.message || "Login failed" };
       }
 
       if (data.success && data.token && data.user) {
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: true };
       }
 
-      return { success: false, error: data.message || "Login failed" };
+      return { success: false, error: data.error || data.message || "Login failed" };
     } catch (error) {
       return { success: false, error: "Network error. Please try again." };
     }
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
 
       if (!response.ok) {
-        return { success: false, error: data.message || "Registration failed" };
+        return { success: false, error: data.error || data.message || "Registration failed" };
       }
 
       if (data.success) {
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      return { success: false, error: data.message || "Registration failed" };
+      return { success: false, error: data.error || data.message || "Registration failed" };
     } catch (error) {
       return { success: false, error: "Network error. Please try again." };
     }
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
 
       if (!response.ok) {
-        return { success: false, error: data.message || "Verification failed" };
+        return { success: false, error: data.error || data.message || "Verification failed" };
       }
 
       if (data.success && data.token && data.user) {
@@ -123,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: true };
       }
 
-      return { success: false, error: data.message || "Verification failed" };
+      return { success: false, error: data.error || data.message || "Verification failed" };
     } catch (error) {
       return { success: false, error: "Network error. Please try again." };
     }
