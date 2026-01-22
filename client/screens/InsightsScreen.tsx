@@ -17,7 +17,6 @@ import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 import {
   getHoldingsWithLivePrices,
   calculatePortfolioMetrics,
-  initializeSampleData,
   Holding,
 } from "@/lib/storage";
 
@@ -40,7 +39,6 @@ export default function InsightsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
-    await initializeSampleData();
     const data = await getHoldingsWithLivePrices();
     setHoldings(data);
     setLoading(false);

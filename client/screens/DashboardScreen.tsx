@@ -27,7 +27,6 @@ import {
   getHoldings,
   getHoldingsWithLivePrices,
   calculatePortfolioMetrics,
-  initializeSampleData,
   Holding,
 } from "@/lib/storage";
 
@@ -55,7 +54,6 @@ export default function DashboardScreen() {
   const [previousValue, setPreviousValue] = useState<number | undefined>(undefined);
 
   const loadData = useCallback(async () => {
-    await initializeSampleData();
     const data = await getHoldingsWithLivePrices();
     setHoldings(data);
     setLoading(false);
