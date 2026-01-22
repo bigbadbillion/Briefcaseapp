@@ -9,6 +9,7 @@ import {
   Modal,
   Platform,
   Linking,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -47,7 +48,7 @@ export default function ProfileScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user, signOut, updateProfile } = useAuth();
 
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +57,9 @@ export default function ProfileScreen() {
     useState<Notifications.PermissionStatus | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [editingName, setEditingName] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   const loadData = useCallback(async () => {
     const data = await getHoldings();
@@ -175,6 +179,30 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleEditName = () => {
+    setEditingName(user?.name || "");
+    setShowEditNameModal(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleSaveName = async () => {
+    if (!editingName.trim()) {
+      Alert.alert("Error", "Please enter a valid name");
+      return;
+    }
+    
+    setSavingName(true);
+    const result = await updateProfile(editingName.trim());
+    setSavingName(false);
+    
+    if (result.success) {
+      setShowEditNameModal(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else {
+      Alert.alert("Error", result.error || "Failed to update name");
+    }
+  };
+
   const handleSignOut = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
@@ -219,9 +247,21 @@ export default function ProfileScreen() {
             >
               <Feather name="user" size={40} color="#FFFFFF" />
             </View>
-            <ThemedText type="h1" style={styles.userName}>
-              {user?.name || "Investor"}
-            </ThemedText>
+            <Pressable 
+              onPress={handleEditName} 
+              style={styles.nameContainer}
+              hitSlop={8}
+            >
+              <ThemedText type="h1" style={styles.userName}>
+                {user?.name || "Investor"}
+              </ThemedText>
+              <Feather 
+                name="edit-2" 
+                size={16} 
+                color={theme.textSecondary} 
+                style={{ marginLeft: Spacing.sm }}
+              />
+            </Pressable>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               {user?.email || "Portfolio Manager"}
             </ThemedText>
@@ -522,6 +562,60 @@ export default function ProfileScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal
+        visible={showEditNameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditNameModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowEditNameModal(false)}
+        >
+          <Pressable
+            style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <ThemedText type="h3" style={{ marginBottom: Spacing.lg }}>
+              Edit Name
+            </ThemedText>
+            <TextInput
+              style={[
+                styles.nameInput,
+                {
+                  backgroundColor: theme.backgroundRoot,
+                  color: theme.text,
+                  borderColor: theme.border,
+                },
+              ]}
+              value={editingName}
+              onChangeText={setEditingName}
+              placeholder="Enter your name"
+              placeholderTextColor={theme.textSecondary}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleSaveName}
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                variant="secondary"
+                onPress={() => setShowEditNameModal(false)}
+                style={{ flex: 1, marginRight: Spacing.sm }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onPress={handleSaveName}
+                disabled={savingName}
+                style={{ flex: 1, marginLeft: Spacing.sm }}
+              >
+                {savingName ? "Saving..." : "Save"}
+              </Button>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </>
   );
 }
@@ -587,6 +681,29 @@ const styles = StyleSheet.create({
   },
   userName: {
     marginBottom: Spacing.xs,
+  },
+  nameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.xs,
+  },
+  nameInput: {
+    height: 48,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    fontSize: 16,
+    borderWidth: 1,
+    marginBottom: Spacing.lg,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   statsCard: {
     marginBottom: Spacing.lg,

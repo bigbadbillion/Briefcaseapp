@@ -291,9 +291,21 @@ export async function authenticateWithApple(
     }
 
     // New user - create account
-    const name = fullName 
-      ? [fullName.givenName, fullName.familyName].filter(Boolean).join(' ')
-      : email?.split('@')[0] || 'Apple User';
+    // Extract name from fullName, falling back to email prefix or generic name
+    let name = '';
+    if (fullName && (fullName.givenName || fullName.familyName)) {
+      name = [fullName.givenName, fullName.familyName].filter(Boolean).join(' ').trim();
+    }
+    if (!name) {
+      // Use email prefix as fallback, but clean up private relay emails
+      if (email && !email.includes('privaterelay')) {
+        name = email.split('@')[0];
+      }
+    }
+    // Final fallback
+    if (!name) {
+      name = 'Apple User';
+    }
 
     const newUser = await storage.createUser({
       email: email || `${user}@privaterelay.appleid.com`,

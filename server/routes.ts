@@ -221,6 +221,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/auth/profile", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { name } = req.body;
+      
+      if (!name || typeof name !== 'string' || name.trim().length < 1) {
+        return res.status(400).json({ error: "Name is required" });
+      }
+
+      const updatedUser = await storage.updateUser(req.user!.id, { name: name.trim() });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({
+        success: true,
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          isPremium: updatedUser.isPremium,
+        },
+      });
+    } catch (error) {
+      console.error("Error in /api/auth/profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
   app.post("/api/auth/logout", async (req, res) => {
     try {
       const authHeader = req.headers.authorization;

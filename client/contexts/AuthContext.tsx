@@ -30,6 +30,7 @@ interface AuthContextType {
   signInWithApple: (data: AppleAuthData) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   verifyEmail: (token: string) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (name: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -176,6 +177,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const updateProfile = useCallback(async (name: string) => {
+    if (!token) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    try {
+      const response = await fetch(new URL("/api/auth/profile", getApiUrl()).toString(), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || "Failed to update profile" };
+      }
+
+      if (data.success && data.user) {
+        const updatedUser = { ...user!, name: data.user.name };
+        await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        return { success: true };
+      }
+
+      return { success: false, error: "Failed to update profile" };
+    } catch (error) {
+      return { success: false, error: "Network error. Please try again." };
+    }
+  }, [token, user]);
+
   const value: AuthContextType = {
     user,
     token,
@@ -186,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithApple,
     signOut,
     verifyEmail,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
