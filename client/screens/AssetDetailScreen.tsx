@@ -6,7 +6,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { Feather } from "@expo/vector-icons";
+import { Feather, FontAwesome5 } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -23,7 +23,7 @@ type TimeRange = "1D" | "1W" | "1M" | "3M" | "1Y" | "ALL";
 
 const TYPE_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   stock: "trending-up",
-  crypto: "dollar-sign",
+  crypto: "circle",
   etf: "layers",
   bond: "file-text",
   real_estate: "home",
@@ -130,7 +130,11 @@ export default function AssetDetailScreen() {
               { backgroundColor: theme.backgroundSecondary },
             ]}
           >
-            <Feather name={icon} size={28} color={theme.primary} />
+            {holding.type === "crypto" ? (
+              <FontAwesome5 name="bitcoin" size={28} color={theme.primary} />
+            ) : (
+              <Feather name={icon} size={28} color={theme.primary} />
+            )}
           </View>
           <View style={styles.headerInfo}>
             <ThemedText type="h1">{holding.symbol}</ThemedText>

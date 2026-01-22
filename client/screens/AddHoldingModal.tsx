@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useNavigation } from "@react-navigation/native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, FontAwesome5 } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
@@ -30,9 +30,9 @@ import {
 
 type AssetType = Holding["type"];
 
-const ASSET_TYPES: { type: AssetType; label: string; icon: keyof typeof Feather.glyphMap }[] = [
+const ASSET_TYPES: { type: AssetType; label: string; icon: keyof typeof Feather.glyphMap; useFontAwesome?: boolean }[] = [
   { type: "stock", label: "Stock", icon: "trending-up" },
-  { type: "crypto", label: "Crypto", icon: "dollar-sign" },
+  { type: "crypto", label: "Crypto", icon: "circle", useFontAwesome: true },
   { type: "etf", label: "ETF", icon: "layers" },
   { type: "bond", label: "Bond", icon: "file-text" },
   { type: "real_estate", label: "Real Estate", icon: "home" },
@@ -263,11 +263,19 @@ export default function AddHoldingModal() {
                   },
                 ]}
               >
-                <Feather
-                  name={assetType.icon}
-                  size={20}
-                  color={type === assetType.type ? "#FFFFFF" : theme.textSecondary}
-                />
+                {assetType.useFontAwesome ? (
+                  <FontAwesome5
+                    name="bitcoin"
+                    size={20}
+                    color={type === assetType.type ? "#FFFFFF" : theme.textSecondary}
+                  />
+                ) : (
+                  <Feather
+                    name={assetType.icon}
+                    size={20}
+                    color={type === assetType.type ? "#FFFFFF" : theme.textSecondary}
+                  />
+                )}
                 <ThemedText
                   type="caption"
                   style={[

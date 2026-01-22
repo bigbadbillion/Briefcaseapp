@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
-import Svg, { Path, G } from "react-native-svg";
+import Svg, { Path, G, Defs, LinearGradient, Stop, Ellipse } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -35,6 +35,24 @@ const CHART_COLORS = [
   "#F59E0B",
   "#8B5CF6",
 ];
+
+const lightenColor = (hex: string, percent: number) => {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.min(255, (num >> 16) + amt);
+  const G = Math.min(255, ((num >> 8) & 0x00ff) + amt);
+  const B = Math.min(255, (num & 0x0000ff) + amt);
+  return `#${((1 << 24) | (R << 16) | (G << 8) | B).toString(16).slice(1)}`;
+};
+
+const darkenColor = (hex: string, percent: number) => {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.max(0, (num >> 16) - amt);
+  const G = Math.max(0, ((num >> 8) & 0x00ff) - amt);
+  const B = Math.max(0, (num & 0x0000ff) - amt);
+  return `#${((1 << 24) | (R << 16) | (G << 8) | B).toString(16).slice(1)}`;
+};
 
 export function AllocationChart({ data, size = 160 }: AllocationChartProps) {
   const { theme } = useTheme();
@@ -90,18 +108,59 @@ export function AllocationChart({ data, size = 160 }: AllocationChartProps) {
 
   return (
     <View style={styles.container}>
-      <Svg width={size} height={size}>
-        <G>
-          {segments.map((segment) => (
-            <AnimatedSegment
-              key={segment.label}
-              path={segment.path}
-              color={segment.color}
-              delay={segment.index * 100}
+      <View style={styles.chartWrapper}>
+        <Svg width={size} height={size + 12}>
+          <Defs>
+            {segments.map((segment, i) => (
+              <LinearGradient
+                key={`grad-${segment.label}`}
+                id={`gradient-${i}`}
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <Stop offset="0%" stopColor={lightenColor(segment.color, 20)} />
+                <Stop offset="50%" stopColor={segment.color} />
+                <Stop offset="100%" stopColor={darkenColor(segment.color, 15)} />
+              </LinearGradient>
+            ))}
+          </Defs>
+          <G transform="translate(0, 6)">
+            <Ellipse
+              cx={centerX}
+              cy={centerY + 4}
+              rx={radius}
+              ry={radius * 0.15}
+              fill="rgba(0,0,0,0.15)"
             />
-          ))}
-        </G>
-      </Svg>
+          </G>
+          <G>
+            {segments.map((segment, i) => (
+              <AnimatedSegment
+                key={segment.label}
+                path={segment.path}
+                gradientId={`gradient-${i}`}
+                delay={segment.index * 100}
+              />
+            ))}
+          </G>
+          <Ellipse
+            cx={centerX}
+            cy={centerY}
+            rx={innerRadius - 2}
+            ry={innerRadius - 2}
+            fill={theme.backgroundSecondary}
+          />
+          <Ellipse
+            cx={centerX}
+            cy={centerY - 2}
+            rx={innerRadius - 6}
+            ry={innerRadius - 6}
+            fill={theme.backgroundDefault}
+          />
+        </Svg>
+      </View>
       <View style={styles.legend}>
         {data.map((item, index) => (
           <View key={item.label} style={styles.legendItem}>
@@ -129,11 +188,11 @@ export function AllocationChart({ data, size = 160 }: AllocationChartProps) {
 
 function AnimatedSegment({
   path,
-  color,
+  gradientId,
   delay,
 }: {
   path: string;
-  color: string;
+  gradientId: string;
   delay: number;
 }) {
   const scale = useSharedValue(0);
@@ -150,7 +209,7 @@ function AnimatedSegment({
   return (
     <AnimatedPath
       d={path}
-      fill={color}
+      fill={`url(#${gradientId})`}
       animatedProps={animatedProps}
       origin={`80, 80`}
     />
@@ -161,6 +220,13 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  chartWrapper: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   legend: {
     marginLeft: Spacing.xl,

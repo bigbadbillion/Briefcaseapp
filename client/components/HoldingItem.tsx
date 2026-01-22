@@ -5,7 +5,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { Feather } from "@expo/vector-icons";
+import { Feather, FontAwesome5 } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -27,7 +27,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const TYPE_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   stock: "trending-up",
-  crypto: "dollar-sign",
+  crypto: "circle",
   etf: "layers",
   bond: "file-text",
   real_estate: "home",
@@ -94,7 +94,11 @@ export function HoldingItem({
           { backgroundColor: theme.backgroundSecondary },
         ]}
       >
-        <Feather name={icon} size={18} color={theme.primary} />
+        {type === "crypto" ? (
+          <FontAwesome5 name="bitcoin" size={18} color={theme.primary} />
+        ) : (
+          <Feather name={icon} size={18} color={theme.primary} />
+        )}
       </View>
 
       <View style={styles.info}>
