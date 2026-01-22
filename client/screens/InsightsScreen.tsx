@@ -1,9 +1,8 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, View, ScrollView, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useFocusEffect } from "@react-navigation/native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -14,11 +13,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { SkeletonLoader } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
-import {
-  getHoldingsWithLivePrices,
-  calculatePortfolioMetrics,
-  Holding,
-} from "@/lib/storage";
+import { useHoldings, calculatePortfolioMetrics, Holding } from "@/hooks/useHoldings";
 
 const emptyInsightsImage = require("../assets/images/empty-insights.png");
 
@@ -34,27 +29,11 @@ export default function InsightsScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
 
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const loadData = useCallback(async () => {
-    const data = await getHoldingsWithLivePrices();
-    setHoldings(data);
-    setLoading(false);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
+  const { data: holdings = [], isLoading: loading, refetch, isRefetching } = useHoldings();
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  }, [loadData]);
+    await refetch();
+  }, [refetch]);
 
   const metrics = calculatePortfolioMetrics(holdings);
 
@@ -201,7 +180,7 @@ export default function InsightsScreen() {
       scrollIndicatorInsets={{ bottom: insets.bottom }}
       refreshControl={
         <RefreshControl
-          refreshing={refreshing}
+          refreshing={isRefetching}
           onRefresh={onRefresh}
           tintColor={theme.primary}
         />

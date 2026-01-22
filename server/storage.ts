@@ -28,6 +28,7 @@ export interface IStorage {
   createHolding(userId: string, holding: Omit<Holding, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Holding>;
   updateHolding(id: string, userId: string, data: Partial<Holding>): Promise<Holding | undefined>;
   deleteHolding(id: string, userId: string): Promise<boolean>;
+  deleteAllHoldings(userId: string): Promise<void>;
   
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
   upsertUserSettings(userId: string, settings: Partial<UserSettings>): Promise<UserSettings>;
@@ -120,6 +121,10 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(holdings.id, id), eq(holdings.userId, userId)))
       .returning();
     return result.length > 0;
+  }
+
+  async deleteAllHoldings(userId: string): Promise<void> {
+    await db.delete(holdings).where(eq(holdings.userId, userId));
   }
 
   async getUserSettings(userId: string): Promise<UserSettings | undefined> {

@@ -28,12 +28,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
-import {
-  getHoldings,
-  calculatePortfolioMetrics,
-  clearAllHoldings,
-  Holding,
-} from "@/lib/storage";
+import { useHoldings, useClearAllHoldings, calculatePortfolioMetrics, Holding } from "@/hooks/useHoldings";
 
 const CURRENCY_STORAGE_KEY = "@briefcase/currency";
 const NOTIFICATIONS_STORAGE_KEY = "@briefcase/notifications";
@@ -50,8 +45,8 @@ export default function ProfileScreen() {
   const { theme, isDark } = useTheme();
   const { user, signOut, updateProfile } = useAuth();
 
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: holdings = [], isLoading: loading, refetch: refetchHoldings } = useHoldings();
+  const clearAllHoldings = useClearAllHoldings();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationPermission, setNotificationPermission] =
     useState<Notifications.PermissionStatus | null>(null);
@@ -61,10 +56,7 @@ export default function ProfileScreen() {
   const [editingName, setEditingName] = useState("");
   const [savingName, setSavingName] = useState(false);
 
-  const loadData = useCallback(async () => {
-    const data = await getHoldings();
-    setHoldings(data);
-
+  const loadSettings = useCallback(async () => {
     const storedNotifications = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
     if (storedNotifications !== null) {
       setNotificationsEnabled(JSON.parse(storedNotifications));
@@ -78,14 +70,12 @@ export default function ProfileScreen() {
     if (storedCurrency) {
       setSelectedCurrency(storedCurrency);
     }
-
-    setLoading(false);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      loadSettings();
+    }, [loadSettings])
   );
 
   const metrics = calculatePortfolioMetrics(holdings);
@@ -170,8 +160,7 @@ export default function ProfileScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await clearAllHoldings();
-            setHoldings([]);
+            await clearAllHoldings.mutateAsync();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           },
         },

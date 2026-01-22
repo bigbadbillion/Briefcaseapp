@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -8,7 +8,6 @@ import {
   Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -17,7 +16,7 @@ import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
-import { getHoldings, calculatePortfolioMetrics, Holding } from "@/lib/storage";
+import { useHoldings, calculatePortfolioMetrics, Holding } from "@/hooks/useHoldings";
 import { sendChatMessage, type ChatMessage as APIChatMessage, type PortfolioContext } from "@/lib/aiService";
 
 interface Message {
@@ -32,16 +31,10 @@ export default function AIChatModal() {
   const { theme, isDark } = useTheme();
   const flatListRef = useRef<FlatList>(null);
 
+  const { data: holdings = [] } = useHoldings();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-
-  useFocusEffect(
-    useCallback(() => {
-      getHoldings().then(setHoldings);
-    }, [])
-  );
 
   useEffect(() => {
     if (messages.length === 0) {

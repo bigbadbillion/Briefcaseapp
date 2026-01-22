@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { StyleSheet, View, ScrollView, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -16,7 +16,7 @@ import { PortfolioChart } from "@/components/PortfolioChart";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
-import { getHoldings, deleteHolding, Holding } from "@/lib/storage";
+import { useHoldings, useDeleteHolding, Holding } from "@/hooks/useHoldings";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type TimeRange = "1D" | "1W" | "1M" | "3M" | "1Y" | "ALL";
@@ -39,19 +39,11 @@ export default function AssetDetailScreen() {
   const route = useRoute<RouteProp<RootStackParamList, "AssetDetail">>();
   const { id } = route.params;
 
-  const [holding, setHolding] = useState<Holding | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: holdings = [], isLoading: loading } = useHoldings();
+  const deleteHolding = useDeleteHolding();
   const [timeRange, setTimeRange] = useState<TimeRange>("1M");
 
-  useFocusEffect(
-    useCallback(() => {
-      getHoldings().then((holdings) => {
-        const found = holdings.find((h) => h.id === id);
-        setHolding(found || null);
-        setLoading(false);
-      });
-    }, [id])
-  );
+  const holding = holdings.find((h) => h.id === id) || null;
 
   const handleDelete = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -64,7 +56,7 @@ export default function AssetDetailScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await deleteHolding(id);
+            await deleteHolding.mutateAsync(id);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             navigation.goBack();
           },

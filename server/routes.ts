@@ -334,6 +334,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/holdings", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
+    try {
+      await storage.deleteAllHoldings(req.user!.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error in DELETE /api/holdings (all):", error);
+      res.status(500).json({ error: "Failed to clear all holdings" });
+    }
+  });
+
   app.delete("/api/holdings/:id", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
     try {
       const id = req.params.id as string;

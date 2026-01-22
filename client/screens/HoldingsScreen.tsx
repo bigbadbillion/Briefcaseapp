@@ -3,7 +3,7 @@ import { StyleSheet, View, FlatList, TextInput, RefreshControl } from "react-nat
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Animated, { FadeIn, FadeInDown, Layout } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
@@ -14,7 +14,7 @@ import { SkeletonLoader } from "@/components/SkeletonLoader";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
-import { getHoldingsWithLivePrices, Holding } from "@/lib/storage";
+import { useHoldings, Holding } from "@/hooks/useHoldings";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 const emptyPortfolioImage = require("../assets/images/empty-portfolio.png");
@@ -26,28 +26,12 @@ export default function HoldingsScreen() {
   const { theme, isDark } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { data: holdings = [], isLoading: loading, refetch, isRefetching } = useHoldings();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const loadData = useCallback(async () => {
-    const data = await getHoldingsWithLivePrices();
-    setHoldings(data);
-    setLoading(false);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
-
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  }, [loadData]);
+    await refetch();
+  }, [refetch]);
 
   const filteredHoldings = holdings.filter(
     (h) =>
@@ -196,7 +180,7 @@ export default function HoldingsScreen() {
       }
       refreshControl={
         <RefreshControl
-          refreshing={refreshing}
+          refreshing={isRefetching}
           onRefresh={onRefresh}
           tintColor={theme.primary}
         />

@@ -20,7 +20,7 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
-import { saveHolding, Holding } from "@/lib/storage";
+import { useAddHolding, Holding } from "@/hooks/useHoldings";
 import {
   searchAssets,
   getPopularAssets,
@@ -45,6 +45,7 @@ export default function AddHoldingModal() {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const addHolding = useAddHolding();
 
   const [type, setType] = useState<AssetType>("stock");
   const [searchQuery, setSearchQuery] = useState("");
@@ -133,13 +134,12 @@ export default function AddHoldingModal() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      await saveHolding({
+      await addHolding.mutateAsync({
         name: selectedAsset.name,
         symbol: selectedAsset.symbol.toUpperCase(),
         type: selectedAsset.type,
         quantity: parseFloat(quantity),
         purchasePrice: parseFloat(purchasePrice),
-        currentPrice: parseFloat(currentPrice),
         purchaseDate: new Date().toISOString().split("T")[0],
       });
 

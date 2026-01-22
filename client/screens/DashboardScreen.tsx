@@ -1,14 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { StyleSheet, View, ScrollView, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useFocusEffect } from "@react-navigation/native";
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withDelay,
-  withSpring,
   FadeIn,
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
@@ -23,12 +18,7 @@ import { AnimatedValue } from "@/components/AnimatedValue";
 import { SkeletonLoader } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, Fonts, BorderRadius } from "@/constants/theme";
-import {
-  getHoldings,
-  getHoldingsWithLivePrices,
-  calculatePortfolioMetrics,
-  Holding,
-} from "@/lib/storage";
+import { useHoldings, calculatePortfolioMetrics, Holding } from "@/hooks/useHoldings";
 
 type TimeRange = "1D" | "1W" | "1M" | "3M" | "1Y" | "ALL";
 
@@ -47,33 +37,15 @@ export default function DashboardScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useTheme();
 
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { data: holdings = [], isLoading: loading, refetch, isRefetching } = useHoldings();
   const [timeRange, setTimeRange] = useState<TimeRange>("1M");
   const [previousValue, setPreviousValue] = useState<number | undefined>(undefined);
 
-  const loadData = useCallback(async () => {
-    const data = await getHoldingsWithLivePrices();
-    setHoldings(data);
-    setLoading(false);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
-
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
     const oldMetrics = calculatePortfolioMetrics(holdings);
     setPreviousValue(oldMetrics.totalValue);
-
-    const data = await getHoldingsWithLivePrices();
-    setHoldings(data);
-    setRefreshing(false);
-  }, [holdings]);
+    await refetch();
+  }, [holdings, refetch]);
 
   const metrics = calculatePortfolioMetrics(holdings);
 
@@ -129,7 +101,7 @@ export default function DashboardScreen() {
       scrollIndicatorInsets={{ bottom: insets.bottom }}
       refreshControl={
         <RefreshControl
-          refreshing={refreshing}
+          refreshing={isRefetching}
           onRefresh={onRefresh}
           tintColor={theme.primary}
         />
@@ -152,22 +124,22 @@ export default function DashboardScreen() {
           />
           <View style={styles.changeContainer}>
             <Feather
-              name={metrics.totalGainLoss >= 0 ? "trending-up" : "trending-down"}
+              name={metrics.totalGain >= 0 ? "trending-up" : "trending-down"}
               size={16}
-              color={metrics.totalGainLoss >= 0 ? theme.gainColor : theme.lossColor}
+              color={metrics.totalGain >= 0 ? theme.gainColor : theme.lossColor}
             />
             <ThemedText
               type="body"
               style={[
                 styles.changeText,
-                { color: metrics.totalGainLoss >= 0 ? theme.gainColor : theme.lossColor },
+                { color: metrics.totalGain >= 0 ? theme.gainColor : theme.lossColor },
               ]}
             >
-              {metrics.totalGainLoss >= 0 ? "+" : ""}
-              ${Math.abs(metrics.totalGainLoss).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              {metrics.totalGain >= 0 ? "+" : ""}
+              ${Math.abs(metrics.totalGain).toLocaleString("en-US", { minimumFractionDigits: 2 })}
               {" ("}
-              {metrics.totalGainLossPercent >= 0 ? "+" : ""}
-              {metrics.totalGainLossPercent.toFixed(2)}%)
+              {metrics.totalGainPercent >= 0 ? "+" : ""}
+              {metrics.totalGainPercent.toFixed(2)}%)
             </ThemedText>
           </View>
         </Card>

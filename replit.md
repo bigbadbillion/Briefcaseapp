@@ -41,7 +41,8 @@ Preferred communication style: Simple, everyday language.
 - Path aliases: `@/` maps to `./client`, `@shared/` maps to `./shared`
 - Shared types between client and server via `shared/` directory
 - Component-based architecture with reusable UI primitives
-- Custom hooks for theming (`useTheme`), screen options (`useScreenOptions`)
+- Custom hooks for theming (`useTheme`), screen options (`useScreenOptions`), and holdings (`useHoldings`)
+- Holdings management via React Query hooks (`useHoldings`, `useAddHolding`, `useDeleteHolding`, `useClearAllHoldings`)
 
 ## External Dependencies
 
