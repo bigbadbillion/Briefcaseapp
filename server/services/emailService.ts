@@ -25,8 +25,9 @@ export async function sendVerificationEmail(
   console.log(`[EMAIL] Using FROM_EMAIL: ${FROM_EMAIL}`);
 
   try {
-    const baseUrl = process.env.EXPO_PUBLIC_DOMAIN 
-      ? (process.env.EXPO_PUBLIC_DOMAIN.startsWith('http') ? process.env.EXPO_PUBLIC_DOMAIN : `https://${process.env.EXPO_PUBLIC_DOMAIN}`)
+    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const baseUrl = domain 
+      ? `https://${domain}:5000`
       : 'http://localhost:5000';
     const verificationUrl = `${baseUrl}/api/auth/verify/${verificationToken}`;
     
