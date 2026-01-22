@@ -325,9 +325,13 @@ export async function authenticateWithApple(
 
 async function verifyAppleToken(identityToken: string): Promise<{ valid: boolean; payload?: any }> {
   try {
-    // Decode the JWT without verification first to get the key ID
-    const [headerB64] = identityToken.split('.');
-    const header = JSON.parse(Buffer.from(headerB64, 'base64').toString());
+    // Decode the JWT without verification first to get the key ID and audience
+    const [headerB64, payloadB64] = identityToken.split('.');
+    const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString());
+    const unverifiedPayload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString());
+    
+    console.log('Apple token audience:', unverifiedPayload.aud);
+    console.log('Apple token issuer:', unverifiedPayload.iss);
     
     // Fetch Apple's public keys
     const keysResponse = await fetch('https://appleid.apple.com/auth/keys');
@@ -341,16 +345,26 @@ async function verifyAppleToken(identityToken: string): Promise<{ valid: boolean
     }
 
     // Import the key and verify the token
-    const { createPublicKey } = await import('crypto');
     const { jwtVerify, importJWK } = await import('jose');
     
     const publicKey = await importJWK(key, 'RS256');
     
+    // Accept both Expo Go's bundle ID and the production app bundle ID
+    // Expo Go uses host.exp.Exponent when testing
+    const validAudiences = [
+      'com.briefcase.app',
+      'host.exp.Exponent',
+    ];
+    
+    // Use the actual audience from the token if it's a valid Apple-issued token
+    const tokenAudience = unverifiedPayload.aud;
+    
     const { payload } = await jwtVerify(identityToken, publicKey, {
       issuer: 'https://appleid.apple.com',
-      audience: `com.briefcase.app`, // Your bundle identifier
+      audience: validAudiences.includes(tokenAudience) ? tokenAudience : validAudiences,
     });
 
+    console.log('Apple token verified successfully');
     return { valid: true, payload };
   } catch (error) {
     console.error('Apple token verification error:', error);
