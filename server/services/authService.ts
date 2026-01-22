@@ -71,8 +71,6 @@ export async function register(
       success: true,
       user: sanitizeUser(user),
       verificationRequired: true,
-      // Only return token if email failed (fallback for testing)
-      verificationToken: emailResult.success ? undefined : verificationToken,
       emailSent: emailResult.success,
     };
   } catch (error) {
@@ -201,7 +199,6 @@ export async function resendVerification(email: string): Promise<AuthResult> {
     return {
       success: true,
       emailSent: emailResult.success,
-      verificationToken: emailResult.success ? undefined : verificationToken,
     };
   } catch (error) {
     console.error("Resend verification error:", error);

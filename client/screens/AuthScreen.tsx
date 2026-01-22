@@ -29,7 +29,7 @@ type AuthMode = "login" | "register" | "verify";
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { signIn, signUp, signInWithApple, verifyEmail } = useAuth();
+  const { signIn, signUp, signInWithApple } = useAuth();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
 
   React.useEffect(() => {
@@ -40,8 +40,6 @@ export default function AuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [verificationToken, setVerificationToken] = useState("");
-  const [pendingVerificationToken, setPendingVerificationToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -82,36 +80,13 @@ export default function AuthScreen() {
     setLoading(false);
 
     if (result.success) {
-      if (result.verificationToken) {
-        setPendingVerificationToken(result.verificationToken);
-      }
       setMode("verify");
       Alert.alert(
         "Account Created",
-        "Please check your email to verify your account, or enter the verification code below."
+        "Please check your email to verify your account."
       );
     } else {
       Alert.alert("Registration Failed", result.error || "Please try again.");
-    }
-  };
-
-  const handleVerify = async () => {
-    const tokenToVerify = verificationToken || pendingVerificationToken;
-    
-    if (!tokenToVerify) {
-      Alert.alert("Error", "Please enter the verification code from your email.");
-      return;
-    }
-
-    setLoading(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    const result = await verifyEmail(tokenToVerify);
-
-    setLoading(false);
-
-    if (!result.success) {
-      Alert.alert("Verification Failed", result.error || "Invalid or expired verification code.");
     }
   };
 
@@ -199,54 +174,11 @@ export default function AuthScreen() {
             {mode === "verify" ? (
               <>
                 <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg, textAlign: "center" }}>
-                  {pendingVerificationToken 
-                    ? "Email delivery may be delayed. Tap the button below to verify your account directly."
-                    : "We've sent a verification email to your inbox. Click the link in the email or enter the code below."}
+                  We've sent a verification email to your inbox. Click the link in the email to verify your account.
                 </ThemedText>
-                {pendingVerificationToken ? (
-                  <>
-                    <Button 
-                      onPress={async () => {
-                        try {
-                          const verifyUrl = `${getApiUrl()}/api/auth/verify/${pendingVerificationToken}`;
-                          await Linking.openURL(verifyUrl);
-                        } catch (e) {
-                          Alert.alert("Error", "Could not open verification link");
-                        }
-                      }} 
-                      style={styles.button}
-                    >
-                      Verify My Account
-                    </Button>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.md, textAlign: "center" }}>
-                      After verifying, return here and tap "Back to Login" to sign in.
-                    </ThemedText>
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.inputContainer}>
-                      <Feather name="key" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-                      <TextInput
-                        style={[
-                          styles.input,
-                          {
-                            backgroundColor: theme.backgroundSecondary,
-                            color: theme.text,
-                            borderColor: theme.border,
-                          },
-                        ]}
-                        placeholder="Verification code"
-                        placeholderTextColor={theme.textSecondary}
-                        value={verificationToken}
-                        onChangeText={setVerificationToken}
-                        autoCapitalize="characters"
-                      />
-                    </View>
-                    <Button onPress={handleVerify} disabled={loading || !verificationToken} style={styles.button}>
-                      {loading ? "Verifying..." : "Verify Email"}
-                    </Button>
-                  </>
-                )}
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.lg, textAlign: "center" }}>
+                  After clicking the link, return here and sign in.
+                </ThemedText>
                 <Pressable onPress={() => switchMode("login")} style={styles.switchMode}>
                   <ThemedText type="body" style={{ color: theme.primary }}>
                     Back to Login
