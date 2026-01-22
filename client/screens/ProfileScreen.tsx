@@ -117,7 +117,7 @@ export default function ProfileScreen() {
 
     if (permission.status === "granted") {
       setNotificationsEnabled(true);
-      setNotificationPermission("granted");
+      setNotificationPermission(permission.status);
       await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(true));
     } else if (permission.status === "denied" && !permission.canAskAgain) {
       const buttons: { text: string; style?: "cancel" | "default" | "destructive"; onPress?: () => void }[] = [

@@ -8,12 +8,14 @@ import {
   Platform,
   ScrollView,
   Pressable,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as AppleAuthentication from "expo-apple-authentication";
+import { getApiUrl } from "@/lib/query-client";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
@@ -197,29 +199,54 @@ export default function AuthScreen() {
             {mode === "verify" ? (
               <>
                 <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg, textAlign: "center" }}>
-                  We've sent a verification email to your inbox. Click the link in the email or enter the code below.
+                  {pendingVerificationToken 
+                    ? "Email delivery may be delayed. Tap the button below to verify your account directly."
+                    : "We've sent a verification email to your inbox. Click the link in the email or enter the code below."}
                 </ThemedText>
-                <View style={styles.inputContainer}>
-                  <Feather name="key" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: theme.backgroundSecondary,
-                        color: theme.text,
-                        borderColor: theme.border,
-                      },
-                    ]}
-                    placeholder="Verification code"
-                    placeholderTextColor={theme.textSecondary}
-                    value={verificationToken}
-                    onChangeText={setVerificationToken}
-                    autoCapitalize="characters"
-                  />
-                </View>
-                <Button onPress={handleVerify} disabled={loading || (!verificationToken && !pendingVerificationToken)} style={styles.button}>
-                  {loading ? "Verifying..." : "Verify Email"}
-                </Button>
+                {pendingVerificationToken ? (
+                  <>
+                    <Button 
+                      onPress={async () => {
+                        try {
+                          const verifyUrl = `${getApiUrl()}/api/auth/verify/${pendingVerificationToken}`;
+                          await Linking.openURL(verifyUrl);
+                        } catch (e) {
+                          Alert.alert("Error", "Could not open verification link");
+                        }
+                      }} 
+                      style={styles.button}
+                    >
+                      Verify My Account
+                    </Button>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.md, textAlign: "center" }}>
+                      After verifying, return here and tap "Back to Login" to sign in.
+                    </ThemedText>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.inputContainer}>
+                      <Feather name="key" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+                      <TextInput
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: theme.backgroundSecondary,
+                            color: theme.text,
+                            borderColor: theme.border,
+                          },
+                        ]}
+                        placeholder="Verification code"
+                        placeholderTextColor={theme.textSecondary}
+                        value={verificationToken}
+                        onChangeText={setVerificationToken}
+                        autoCapitalize="characters"
+                      />
+                    </View>
+                    <Button onPress={handleVerify} disabled={loading || !verificationToken} style={styles.button}>
+                      {loading ? "Verifying..." : "Verify Email"}
+                    </Button>
+                  </>
+                )}
                 <Pressable onPress={() => switchMode("login")} style={styles.switchMode}>
                   <ThemedText type="body" style={{ color: theme.primary }}>
                     Back to Login

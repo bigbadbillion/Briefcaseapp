@@ -5,6 +5,8 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 const APP_NAME = 'Briefcase';
 const FROM_EMAIL = 'onboarding@resend.dev';
 
+console.log(`Email service initialized: ${resend ? 'Resend configured' : 'Resend not configured (missing RESEND_API_KEY)'}`);
+
 export function isEmailConfigured(): boolean {
   return !!resend;
 }
@@ -15,12 +17,17 @@ export async function sendVerificationEmail(
   verificationToken: string
 ): Promise<{ success: boolean; error?: string }> {
   if (!resend) {
-    console.warn('Resend not configured - email not sent');
+    console.warn('Resend not configured - email not sent. Please add RESEND_API_KEY to secrets.');
     return { success: false, error: 'Email service not configured' };
   }
 
+  console.log(`Attempting to send verification email to: ${to}`);
+
   try {
-    const verificationUrl = `${process.env.EXPO_PUBLIC_DOMAIN || 'http://localhost:5000'}/api/auth/verify/${verificationToken}`;
+    const baseUrl = process.env.EXPO_PUBLIC_DOMAIN 
+      ? (process.env.EXPO_PUBLIC_DOMAIN.startsWith('http') ? process.env.EXPO_PUBLIC_DOMAIN : `https://${process.env.EXPO_PUBLIC_DOMAIN}`)
+      : 'http://localhost:5000';
+    const verificationUrl = `${baseUrl}/api/auth/verify/${verificationToken}`;
     
     const { error } = await resend.emails.send({
       from: `${APP_NAME} <${FROM_EMAIL}>`,
@@ -106,14 +113,22 @@ If you didn't create an account, you can safely ignore this email.
     });
 
     if (error) {
-      console.error('Resend error:', error);
-      return { success: false, error: error.message };
+      console.error('Resend error:', JSON.stringify(error, null, 2));
+      const errorMessage = error.message || 'Email send failed';
+      if (errorMessage.includes('sandbox') || errorMessage.includes('verify')) {
+        return { 
+          success: false, 
+          error: 'Resend sandbox mode: Can only send to verified email addresses. Add a verified domain in Resend dashboard.' 
+        };
+      }
+      return { success: false, error: errorMessage };
     }
 
+    console.log(`Verification email sent successfully to: ${to}`);
     return { success: true };
-  } catch (error) {
-    console.error('Email send error:', error);
-    return { success: false, error: 'Failed to send verification email' };
+  } catch (error: any) {
+    console.error('Email send error:', error?.message || error);
+    return { success: false, error: error?.message || 'Failed to send verification email' };
   }
 }
 
