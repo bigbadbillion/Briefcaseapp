@@ -58,6 +58,7 @@ export default function AddHoldingModal() {
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
   const [fetchingPrice, setFetchingPrice] = useState(false);
+  const [priceAutoFetched, setPriceAutoFetched] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function AddHoldingModal() {
     setSearchQuery("");
     setSearchResults([]);
     setCurrentPrice("");
+    setPriceAutoFetched(false);
     setShowSearch(false);
   }, [type]);
 
@@ -104,12 +106,14 @@ export default function AddHoldingModal() {
     setSearchQuery("");
     setSearchResults([]);
     setShowSearch(false);
+    setPriceAutoFetched(false);
 
     if (asset.type === "crypto" || asset.type === "stock" || asset.type === "etf") {
       setFetchingPrice(true);
       const price = await fetchAssetPrice(asset.symbol, asset.type, asset.id);
       if (price !== null) {
         setCurrentPrice(price.toFixed(2));
+        setPriceAutoFetched(true);
       }
       setFetchingPrice(false);
     }
@@ -297,6 +301,7 @@ export default function AddHoldingModal() {
                 onPress={() => {
                   setSelectedAsset(null);
                   setCurrentPrice("");
+                  setPriceAutoFetched(false);
                 }}
                 style={[styles.changeButton, { backgroundColor: theme.backgroundTertiary }]}
               >
@@ -312,7 +317,7 @@ export default function AddHoldingModal() {
                   Fetching current price...
                 </ThemedText>
               </View>
-            ) : currentPrice ? (
+            ) : priceAutoFetched && currentPrice ? (
               <View style={styles.pricePreview}>
                 <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                   Current Price
@@ -451,7 +456,7 @@ export default function AddHoldingModal() {
               </View>
             </View>
 
-            {!currentPrice && !fetchingPrice ? (
+            {!priceAutoFetched && !fetchingPrice ? (
               <View style={styles.inputGroup}>
                 <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                   Current Price ($)
