@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View, ScrollView, Alert } from "react-native";
+import { StyleSheet, View, ScrollView, Alert, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -130,7 +130,13 @@ export default function AssetDetailScreen() {
               { backgroundColor: theme.backgroundSecondary },
             ]}
           >
-            {holding.type === "crypto" ? (
+            {holding.type === "crypto" && holding.imageUrl ? (
+              <Image
+                source={{ uri: holding.imageUrl }}
+                style={styles.cryptoLogo}
+                onError={() => {}}
+              />
+            ) : holding.type === "crypto" ? (
               <FontAwesome5 name="bitcoin" size={28} color={theme.primary} />
             ) : (
               <Feather name={icon} size={28} color={theme.primary} />
@@ -304,6 +310,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.md,
+  },
+  cryptoLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   headerInfo: {
     flex: 1,

@@ -145,6 +145,7 @@ export default function AddHoldingModal() {
         quantity: parseFloat(quantity),
         purchasePrice: parseFloat(purchasePrice),
         purchaseDate: new Date().toISOString().split("T")[0],
+        imageUrl: selectedAsset.imageUrl,
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

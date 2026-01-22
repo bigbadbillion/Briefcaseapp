@@ -119,6 +119,7 @@ export default function HoldingsScreen() {
                 change={change}
                 changePercent={changePercent}
                 type={item.type}
+                imageUrl={item.imageUrl}
                 onPress={() => navigation.navigate("AssetDetail", { id: item.id })}
               />
             </Animated.View>

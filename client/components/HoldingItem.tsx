@@ -1,5 +1,5 @@
-import React from "react";
-import { StyleSheet, View, Pressable } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, View, Pressable, Image } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -20,6 +20,7 @@ interface HoldingItemProps {
   change: number;
   changePercent: number;
   type: string;
+  imageUrl?: string;
   onPress?: () => void;
 }
 
@@ -43,9 +44,11 @@ export function HoldingItem({
   change,
   changePercent,
   type,
+  imageUrl,
   onPress,
 }: HoldingItemProps) {
   const { theme, isDark } = useTheme();
+  const [imageError, setImageError] = useState(false);
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
@@ -94,7 +97,13 @@ export function HoldingItem({
           { backgroundColor: theme.backgroundSecondary },
         ]}
       >
-        {type === "crypto" ? (
+        {type === "crypto" && imageUrl && !imageError ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.cryptoLogo}
+            onError={() => setImageError(true)}
+          />
+        ) : type === "crypto" ? (
           <FontAwesome5 name="bitcoin" size={18} color={theme.primary} />
         ) : (
           <Feather name={icon} size={18} color={theme.primary} />
@@ -152,6 +161,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.md,
+  },
+  cryptoLogo: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
   info: {
     flex: 1,

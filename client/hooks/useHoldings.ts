@@ -14,6 +14,7 @@ export interface Holding {
   currentPrice: number;
   purchaseDate: string;
   notes?: string;
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,6 +27,7 @@ export interface HoldingInput {
   purchasePrice: number;
   purchaseDate: string;
   notes?: string;
+  imageUrl?: string;
 }
 
 async function fetchHoldings(token: string): Promise<Holding[]> {
