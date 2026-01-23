@@ -10,8 +10,11 @@ import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
-import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useSubscription, getRevenueCatDebugInfo } from "@/contexts/SubscriptionContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
+
+// TEMPORARY: Debug display for TestFlight - remove after confirming keys work
+const DEBUG_MODE = true;
 
 const PREMIUM_FEATURES = [
   {
@@ -155,6 +158,20 @@ export default function PaywallScreen() {
           </ThemedText>
         </Animated.View>
 
+        {DEBUG_MODE ? (
+          <View style={[styles.debugBox, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>
+              DEBUG (remove after testing):
+            </ThemedText>
+            <ThemedText type="mono" style={{ color: theme.text, fontSize: 10 }}>
+              {(() => {
+                const info = getRevenueCatDebugInfo();
+                return `ExpoGo: ${info.isExpoGo}\nProdKey: ${info.hasProductionKey} (${info.productionKeyLength})\nTestKey: ${info.hasTestKey} (${info.testKeyLength})\nActive: ${info.activeKeyPrefix || 'NONE'}...\nOffering: ${offering?.identifier || 'null'}\nPkgs: ${offering?.availablePackages?.length || 0}`;
+              })()}
+            </ThemedText>
+          </View>
+        ) : null}
+
         <Animated.View 
           entering={FadeInDown.delay(200).duration(400)} 
           style={styles.featuresSection}
@@ -282,6 +299,12 @@ const styles = StyleSheet.create({
   title: {
     marginBottom: Spacing.sm,
     textAlign: "center",
+  },
+  debugBox: {
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
   featuresSection: {
     gap: Spacing.md,
