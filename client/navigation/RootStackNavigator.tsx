@@ -6,6 +6,7 @@ import AddHoldingModal from "@/screens/AddHoldingModal";
 import AIChatModal from "@/screens/AIChatModal";
 import AssetDetailScreen from "@/screens/AssetDetailScreen";
 import AuthScreen from "@/screens/AuthScreen";
+import PaywallScreen from "@/screens/PaywallScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
@@ -16,6 +17,7 @@ export type RootStackParamList = {
   AddHoldingModal: undefined;
   AIChatModal: undefined;
   AssetDetail: { id: string };
+  Paywall: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -66,6 +68,14 @@ export default function RootStackNavigator() {
             component={AssetDetailScreen}
             options={{
               headerTitle: "Asset Details",
+            }}
+          />
+          <Stack.Screen
+            name="Paywall"
+            component={PaywallScreen}
+            options={{
+              presentation: "modal",
+              headerShown: false,
             }}
           />
         </>

@@ -1,19 +1,26 @@
 import React, { useCallback } from "react";
-import { StyleSheet, View, ScrollView, RefreshControl } from "react-native";
+import { StyleSheet, View, ScrollView, RefreshControl, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Animated, { FadeIn } from "react-native-reanimated";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
+import { Button } from "@/components/Button";
 import { RiskGauge } from "@/components/RiskGauge";
 import { InsightCard } from "@/components/InsightCard";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonLoader } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 import { useHoldings, calculatePortfolioMetrics, Holding } from "@/hooks/useHoldings";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 const emptyInsightsImage = require("../assets/images/empty-insights.png");
 
@@ -28,8 +35,15 @@ export default function InsightsScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
+  const { isPremium } = useSubscription();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const { data: holdings = [], isLoading: loading, refetch, isRefetching } = useHoldings();
+
+  const handleUpgrade = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    navigation.navigate("Paywall");
+  };
 
   const onRefresh = useCallback(async () => {
     await refetch();
@@ -149,21 +163,48 @@ export default function InsightsScreen() {
 
   if (holdings.length === 0) {
     return (
-      <View
-        style={[
-          styles.container,
-          {
-            backgroundColor: theme.backgroundRoot,
-            paddingTop: headerHeight,
-          },
-        ]}
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+        contentContainerStyle={{
+          paddingTop: headerHeight + Spacing.xl,
+          paddingBottom: tabBarHeight + Spacing["5xl"],
+          paddingHorizontal: Spacing.lg,
+        }}
       >
         <EmptyState
           image={emptyInsightsImage}
           title="No insights yet"
           description="Add some holdings to get AI-powered insights about your portfolio"
         />
-      </View>
+        
+        <ThemedText type="h3" style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
+          AI Recommendations
+        </ThemedText>
+        {isPremium ? (
+          <Card>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              Add holdings to receive personalized AI recommendations.
+            </ThemedText>
+          </Card>
+        ) : (
+          <Animated.View entering={FadeIn.delay(200).duration(400)}>
+            <Card style={styles.premiumCard}>
+              <View style={[styles.premiumIconContainer, { backgroundColor: `${theme.primary}20` }]}>
+                <Feather name="star" size={24} color={theme.primary} />
+              </View>
+              <ThemedText type="h3" style={styles.premiumTitle}>
+                Unlock AI Insights
+              </ThemedText>
+              <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginBottom: Spacing.lg }}>
+                Get personalized portfolio recommendations powered by advanced AI analysis
+              </ThemedText>
+              <Button onPress={handleUpgrade} style={styles.upgradeButton}>
+                Upgrade to Premium
+              </Button>
+            </Card>
+          </Animated.View>
+        )}
+      </ScrollView>
     );
   }
 
@@ -258,22 +299,41 @@ export default function InsightsScreen() {
       <ThemedText type="h3" style={styles.sectionTitle}>
         AI Recommendations
       </ThemedText>
-      {insights.length > 0 ? (
-        insights.map((insight, index) => (
-          <InsightCard
-            key={index}
-            type={insight.type}
-            title={insight.title}
-            description={insight.description}
-            delay={400 + index * 100}
-          />
-        ))
+      {isPremium ? (
+        insights.length > 0 ? (
+          insights.map((insight, index) => (
+            <InsightCard
+              key={index}
+              type={insight.type}
+              title={insight.title}
+              description={insight.description}
+              delay={400 + index * 100}
+            />
+          ))
+        ) : (
+          <Card>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              No specific recommendations at this time. Your portfolio looks balanced!
+            </ThemedText>
+          </Card>
+        )
       ) : (
-        <Card>
-          <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            No specific recommendations at this time. Your portfolio looks balanced!
-          </ThemedText>
-        </Card>
+        <Animated.View entering={FadeIn.delay(400).duration(400)}>
+          <Card style={styles.premiumCard}>
+            <View style={[styles.premiumIconContainer, { backgroundColor: `${theme.primary}20` }]}>
+              <Feather name="star" size={24} color={theme.primary} />
+            </View>
+            <ThemedText type="h3" style={styles.premiumTitle}>
+              Unlock AI Insights
+            </ThemedText>
+            <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginBottom: Spacing.lg }}>
+              Get personalized portfolio recommendations powered by advanced AI analysis
+            </ThemedText>
+            <Button onPress={handleUpgrade} style={styles.upgradeButton}>
+              Upgrade to Premium
+            </Button>
+          </Card>
+        </Animated.View>
       )}
     </ScrollView>
   );
@@ -336,5 +396,24 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginBottom: Spacing.md,
+  },
+  premiumCard: {
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  premiumIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
+  premiumTitle: {
+    marginBottom: Spacing.sm,
+    textAlign: "center",
+  },
+  upgradeButton: {
+    width: "100%",
   },
 });

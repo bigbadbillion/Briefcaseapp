@@ -73,9 +73,26 @@ Preferred communication style: Simple, everyday language.
 - Session-based authentication with PostgreSQL-stored tokens
 - API endpoints: `/api/auth/register`, `/api/auth/login`, `/api/auth/verify/:token`
 
-## Pricing Model
+## Pricing Model & Subscription
 - **Free Tier**: Portfolio tracking, real-time prices, basic analytics
 - **Premium ($4.99/month)**: AI-powered insights, portfolio optimization, custom alerts
+- **3-day free trial** included with Premium subscription
+
+### RevenueCat Integration
+- **SDK**: react-native-purchases for cross-platform subscription management
+- **Product ID**: briefcase_monthly_499
+- **Entitlement ID**: premium
+- **API Key**: `EXPO_PUBLIC_REVENUECAT_API_KEY` environment variable (configure in RevenueCat dashboard)
+
+### Premium-Gated Features
+- **AI Chat Modal**: Entire chat interface requires premium subscription
+- **AI Recommendations**: In Insights screen, AI recommendations require premium
+- Non-premium users see upsell cards with "Upgrade to Premium" CTAs
+- `SubscriptionContext` provides `isPremium` state via `useSubscription()` hook
+
+### Subscription Files
+- `client/contexts/SubscriptionContext.tsx` - RevenueCat initialization and premium state
+- `client/screens/PaywallScreen.tsx` - Premium subscription paywall with pricing
 
 ## Smart Asset Entry
 The Add Holding flow provides intelligent assistance:

@@ -9,15 +9,21 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
+import { Card } from "@/components/Card";
+import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 import { useHoldings, calculatePortfolioMetrics, Holding } from "@/hooks/useHoldings";
 import { sendChatMessage, type ChatMessage as APIChatMessage, type PortfolioContext } from "@/lib/aiService";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 interface Message {
   id: string;
@@ -29,12 +35,19 @@ interface Message {
 export default function AIChatModal() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
+  const { isPremium } = useSubscription();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const flatListRef = useRef<FlatList>(null);
 
   const { data: holdings = [] } = useHoldings();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+
+  const handleUpgrade = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    navigation.replace("Paywall");
+  };
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -201,6 +214,35 @@ export default function AIChatModal() {
     "Best performing asset?",
     "Any recommendations?",
   ];
+
+  if (!isPremium) {
+    return (
+      <View style={[styles.container, styles.premiumContainer, { backgroundColor: theme.backgroundRoot }]}>
+        <View style={styles.premiumContent}>
+          <View style={[styles.premiumIconContainer, { backgroundColor: `${theme.primary}20` }]}>
+            <Feather name="cpu" size={32} color={theme.primary} />
+          </View>
+          <ThemedText type="h2" style={styles.premiumTitle}>
+            AI Chat Assistant
+          </ThemedText>
+          <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginBottom: Spacing.xl }}>
+            Get instant answers about your portfolio with our AI-powered assistant. Ask about risk, diversification, recommendations, and more.
+          </ThemedText>
+          <Button onPress={handleUpgrade} style={styles.premiumButton}>
+            Upgrade to Premium
+          </Button>
+          <Pressable 
+            onPress={() => navigation.goBack()} 
+            style={styles.backLink}
+          >
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              Maybe later
+            </ThemedText>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -416,5 +458,33 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+  },
+  premiumContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.xl,
+  },
+  premiumContent: {
+    alignItems: "center",
+    maxWidth: 320,
+  },
+  premiumIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.xl,
+  },
+  premiumTitle: {
+    marginBottom: Spacing.md,
+    textAlign: "center",
+  },
+  premiumButton: {
+    width: "100%",
+    marginBottom: Spacing.lg,
+  },
+  backLink: {
+    padding: Spacing.md,
   },
 });
