@@ -364,7 +364,7 @@ async function verifyAppleToken(identityToken: string): Promise<{ valid: boolean
     // Accept both Expo Go's bundle ID and the production app bundle ID
     // Expo Go uses host.exp.Exponent when testing
     const validAudiences = [
-      'com.briefcase.app',
+      'me.echovault.briefcase',
       'host.exp.Exponent',
     ];
     
