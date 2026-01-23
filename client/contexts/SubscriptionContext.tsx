@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { Platform, AppState, AppStateStatus } from "react-native";
 import * as Application from "expo-application";
+import Constants from "expo-constants";
 import Purchases, { 
   CustomerInfo, 
   PurchasesOffering, 
@@ -9,13 +10,14 @@ import Purchases, {
 } from "react-native-purchases";
 import { useAuth } from "./AuthContext";
 
-const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || "";
-const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY || "";
+// Read API keys from app.config.js extra field (more reliable for builds)
+const REVENUECAT_API_KEY = Constants.expoConfig?.extra?.revenueCatApiKey || "";
+const REVENUECAT_TEST_API_KEY = Constants.expoConfig?.extra?.revenueCatTestApiKey || "";
 const ENTITLEMENT_ID = "premium";
 
-// Debug: Log what we got from environment
-console.log("[RevenueCat] ENV CHECK - Production key exists:", !!REVENUECAT_API_KEY, "length:", REVENUECAT_API_KEY.length);
-console.log("[RevenueCat] ENV CHECK - Test key exists:", !!REVENUECAT_TEST_API_KEY, "length:", REVENUECAT_TEST_API_KEY.length);
+// Debug: Log what we got from config
+console.log("[RevenueCat] CONFIG CHECK - Production key exists:", !!REVENUECAT_API_KEY, "length:", REVENUECAT_API_KEY.length);
+console.log("[RevenueCat] CONFIG CHECK - Test key exists:", !!REVENUECAT_TEST_API_KEY, "length:", REVENUECAT_TEST_API_KEY.length);
 
 const isExpoGo = Application.applicationId === "host.exp.Exponent";
 
@@ -29,6 +31,18 @@ const getApiKey = (): string => {
   console.log("[RevenueCat] Prod key value (first 10):", REVENUECAT_API_KEY.substring(0, 10) || "EMPTY");
   return REVENUECAT_API_KEY;
 };
+
+// Export for debug display
+export const getRevenueCatDebugInfo = () => ({
+  isExpoGo,
+  hasProductionKey: !!REVENUECAT_API_KEY,
+  productionKeyLength: REVENUECAT_API_KEY.length,
+  hasTestKey: !!REVENUECAT_TEST_API_KEY,
+  testKeyLength: REVENUECAT_TEST_API_KEY.length,
+  activeKeyPrefix: isExpoGo 
+    ? REVENUECAT_TEST_API_KEY.substring(0, 8) 
+    : REVENUECAT_API_KEY.substring(0, 8),
+});
 
 interface SubscriptionContextType {
   isPremium: boolean;
