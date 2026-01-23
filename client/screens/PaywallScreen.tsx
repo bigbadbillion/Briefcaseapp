@@ -187,10 +187,10 @@ export default function PaywallScreen() {
         >
           <Button
             onPress={handlePurchase}
-            disabled={isPurchasing || isRestoring || !monthlyPackage}
+            disabled={isPurchasing || isRestoring}
             style={styles.ctaButton}
           >
-            {isPurchasing ? "Processing..." : "Start Free Trial"}
+            {isPurchasing ? "Processing..." : isLoading ? "Loading..." : "Start Free Trial"}
           </Button>
           
           <Pressable 
