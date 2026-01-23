@@ -105,12 +105,19 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const loadOfferings = async () => {
     try {
+      console.log("[RevenueCat] Loading offerings...");
       const offerings = await Purchases.getOfferings();
+      console.log("[RevenueCat] All offerings:", JSON.stringify(offerings, null, 2));
+      console.log("[RevenueCat] Current offering:", offerings.current);
+      
       if (offerings.current) {
+        console.log("[RevenueCat] Current offering packages:", offerings.current.availablePackages);
         setOffering(offerings.current);
+      } else {
+        console.warn("[RevenueCat] No current offering configured. Please set up an offering in RevenueCat dashboard.");
       }
     } catch (error) {
-      console.error("Error loading offerings:", error);
+      console.error("[RevenueCat] Error loading offerings:", error);
     }
   };
 

@@ -48,9 +48,17 @@ export default function PaywallScreen() {
     (pkg) => pkg.packageType === "MONTHLY" || pkg.identifier === "$rc_monthly"
   );
 
+  console.log("[Paywall] Offering:", offering);
+  console.log("[Paywall] Monthly package:", monthlyPackage);
+  console.log("[Paywall] Available packages:", offering?.availablePackages);
+
   const handlePurchase = async () => {
+    console.log("[Paywall] Purchase button pressed");
+    console.log("[Paywall] monthlyPackage exists:", !!monthlyPackage);
+    
     if (!monthlyPackage) {
-      Alert.alert("Error", "Subscription not available. Please try again later.");
+      console.log("[Paywall] No monthly package available - showing alert");
+      Alert.alert("Subscription Not Ready", "The subscription product hasn't loaded yet. Please make sure you have configured offerings in RevenueCat and try again.");
       return;
     }
 
