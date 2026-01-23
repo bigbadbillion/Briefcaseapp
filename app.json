@@ -40,7 +40,8 @@
         }
       ],
       "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "react-native-purchases"
     ],
     "experiments": {
       "reactCompiler": true
