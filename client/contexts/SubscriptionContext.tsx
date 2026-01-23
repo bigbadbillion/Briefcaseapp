@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { Platform, AppState, AppStateStatus } from "react-native";
+import * as Application from "expo-application";
 import Purchases, { 
   CustomerInfo, 
   PurchasesOffering, 
@@ -9,7 +10,19 @@ import Purchases, {
 import { useAuth } from "./AuthContext";
 
 const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || "";
+const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY || "";
 const ENTITLEMENT_ID = "premium";
+
+const isExpoGo = Application.applicationId === "host.exp.Exponent";
+
+const getApiKey = (): string => {
+  if (isExpoGo) {
+    console.log("[RevenueCat] Running in Expo Go - using Test Store API key");
+    return REVENUECAT_TEST_API_KEY;
+  }
+  console.log("[RevenueCat] Running in standalone app - using production API key");
+  return REVENUECAT_API_KEY;
+};
 
 interface SubscriptionContextType {
   isPremium: boolean;
@@ -37,16 +50,19 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     const initializePurchases = async () => {
       try {
-        if (!REVENUECAT_API_KEY) {
-          console.warn("RevenueCat API key not configured");
+        const apiKey = getApiKey();
+        
+        if (!apiKey) {
+          console.warn("[RevenueCat] API key not configured");
           setIsLoading(false);
           return;
         }
 
+        console.log("[RevenueCat] Initializing with API key:", apiKey.substring(0, 10) + "...");
         Purchases.setLogLevel(LOG_LEVEL.DEBUG);
         
         await Purchases.configure({ 
-          apiKey: REVENUECAT_API_KEY,
+          apiKey: apiKey,
         });
         
         setIsConfigured(true);
