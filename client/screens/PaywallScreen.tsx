@@ -44,13 +44,37 @@ export default function PaywallScreen() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
 
+  // Try to find monthly package first, then fall back to any available package
   const monthlyPackage = offering?.availablePackages.find(
     (pkg) => pkg.packageType === "MONTHLY" || pkg.identifier === "$rc_monthly"
-  );
+  ) || offering?.availablePackages.find(
+    (pkg) => pkg.product?.identifier === "monthly_499"
+  ) || (offering?.availablePackages.length ? offering.availablePackages[0] : null);
 
-  console.log("[Paywall] Offering:", offering);
-  console.log("[Paywall] Monthly package:", monthlyPackage);
-  console.log("[Paywall] Available packages:", offering?.availablePackages);
+  // Detailed debug logging
+  console.log("[Paywall] === SUBSCRIPTION DEBUG ===");
+  console.log("[Paywall] Offering exists:", !!offering);
+  console.log("[Paywall] Offering identifier:", offering?.identifier);
+  console.log("[Paywall] Available packages count:", offering?.availablePackages?.length || 0);
+  
+  if (offering?.availablePackages) {
+    offering.availablePackages.forEach((pkg, index) => {
+      console.log(`[Paywall] Package ${index}:`, {
+        identifier: pkg.identifier,
+        packageType: pkg.packageType,
+        productIdentifier: pkg.product?.identifier,
+        productTitle: pkg.product?.title,
+        priceString: pkg.product?.priceString,
+      });
+    });
+  }
+  
+  console.log("[Paywall] Selected package:", monthlyPackage ? {
+    identifier: monthlyPackage.identifier,
+    packageType: monthlyPackage.packageType,
+    productIdentifier: monthlyPackage.product?.identifier,
+  } : "NONE - subscription not ready");
+  console.log("[Paywall] === END DEBUG ===");
 
   const handlePurchase = async () => {
     console.log("[Paywall] Purchase button pressed");
@@ -58,7 +82,11 @@ export default function PaywallScreen() {
     
     if (!monthlyPackage) {
       console.log("[Paywall] No monthly package available - showing alert");
-      Alert.alert("Subscription Not Ready", "The subscription product hasn't loaded yet. Please make sure you have configured offerings in RevenueCat and try again.");
+      const debugInfo = `Offering: ${offering ? offering.identifier : 'null'}\nPackages: ${offering?.availablePackages?.length || 0}`;
+      Alert.alert(
+        "Subscription Not Ready", 
+        `The subscription product hasn't loaded yet.\n\nDebug:\n${debugInfo}\n\nPlease try closing and reopening the app.`
+      );
       return;
     }
 

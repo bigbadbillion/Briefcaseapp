@@ -121,19 +121,38 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const loadOfferings = async () => {
     try {
-      console.log("[RevenueCat] Loading offerings...");
+      console.log("[RevenueCat] === LOADING OFFERINGS ===");
+      console.log("[RevenueCat] API Key (first 15 chars):", getApiKey().substring(0, 15) + "...");
+      console.log("[RevenueCat] Is Expo Go:", isExpoGo);
+      
       const offerings = await Purchases.getOfferings();
-      console.log("[RevenueCat] All offerings:", JSON.stringify(offerings, null, 2));
-      console.log("[RevenueCat] Current offering:", offerings.current);
+      
+      console.log("[RevenueCat] Offerings response received");
+      console.log("[RevenueCat] All offering identifiers:", Object.keys(offerings.all || {}));
+      console.log("[RevenueCat] Current offering:", offerings.current?.identifier || "NONE");
       
       if (offerings.current) {
-        console.log("[RevenueCat] Current offering packages:", offerings.current.availablePackages);
+        console.log("[RevenueCat] Current offering packages count:", offerings.current.availablePackages?.length || 0);
+        
+        offerings.current.availablePackages?.forEach((pkg, i) => {
+          console.log(`[RevenueCat] Package ${i}: ${pkg.identifier} (${pkg.packageType})`, {
+            productId: pkg.product?.identifier,
+            price: pkg.product?.priceString,
+            title: pkg.product?.title,
+          });
+        });
+        
         setOffering(offerings.current);
       } else {
-        console.warn("[RevenueCat] No current offering configured. Please set up an offering in RevenueCat dashboard.");
+        console.warn("[RevenueCat] No current offering configured!");
+        console.warn("[RevenueCat] Available offerings:", JSON.stringify(offerings.all, null, 2));
       }
-    } catch (error) {
+      console.log("[RevenueCat] === END OFFERINGS ===");
+    } catch (error: any) {
       console.error("[RevenueCat] Error loading offerings:", error);
+      console.error("[RevenueCat] Error code:", error?.code);
+      console.error("[RevenueCat] Error message:", error?.message);
+      console.error("[RevenueCat] Error userInfo:", error?.userInfo);
     }
   };
 
