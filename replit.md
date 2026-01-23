@@ -80,7 +80,7 @@ Preferred communication style: Simple, everyday language.
 
 ### RevenueCat Integration
 - **SDK**: react-native-purchases for cross-platform subscription management
-- **Product ID**: briefcase_monthly_499
+- **Product ID**: monthly_499
 - **Entitlement ID**: premium
 - **API Key**: `EXPO_PUBLIC_REVENUECAT_API_KEY` environment variable (configure in RevenueCat dashboard)
 
