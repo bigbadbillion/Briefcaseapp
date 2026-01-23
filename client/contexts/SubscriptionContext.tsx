@@ -13,14 +13,20 @@ const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || "";
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY || "";
 const ENTITLEMENT_ID = "premium";
 
+// Debug: Log what we got from environment
+console.log("[RevenueCat] ENV CHECK - Production key exists:", !!REVENUECAT_API_KEY, "length:", REVENUECAT_API_KEY.length);
+console.log("[RevenueCat] ENV CHECK - Test key exists:", !!REVENUECAT_TEST_API_KEY, "length:", REVENUECAT_TEST_API_KEY.length);
+
 const isExpoGo = Application.applicationId === "host.exp.Exponent";
 
 const getApiKey = (): string => {
   if (isExpoGo) {
     console.log("[RevenueCat] Running in Expo Go - using Test Store API key");
+    console.log("[RevenueCat] Test key value (first 10):", REVENUECAT_TEST_API_KEY.substring(0, 10) || "EMPTY");
     return REVENUECAT_TEST_API_KEY;
   }
   console.log("[RevenueCat] Running in standalone app - using production API key");
+  console.log("[RevenueCat] Prod key value (first 10):", REVENUECAT_API_KEY.substring(0, 10) || "EMPTY");
   return REVENUECAT_API_KEY;
 };
 
