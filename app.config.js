@@ -3,7 +3,7 @@ module.exports = ({ config }) => {
     ...config,
     extra: {
       ...config.extra,
-      revenueCatApiKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || "",
+      revenueCatApiKey: "appl_PAHRXohcpYwGXvHruLXHxMHnuDW",
       revenueCatTestApiKey: process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY || "",
     },
   };
