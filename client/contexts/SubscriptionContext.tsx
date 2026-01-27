@@ -13,7 +13,7 @@ import { useAuth } from "./AuthContext";
 // Read API keys from app.config.js extra field (more reliable for builds)
 const REVENUECAT_API_KEY = Constants.expoConfig?.extra?.revenueCatApiKey || "";
 const REVENUECAT_TEST_API_KEY = Constants.expoConfig?.extra?.revenueCatTestApiKey || "";
-const ENTITLEMENT_ID = "premium";
+const ENTITLEMENT_ID = "Briefcase Pro";
 
 // Debug: Log what we got from config
 console.log("[RevenueCat] CONFIG CHECK - Production key exists:", !!REVENUECAT_API_KEY, "length:", REVENUECAT_API_KEY.length);
