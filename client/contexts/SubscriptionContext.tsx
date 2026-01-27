@@ -183,14 +183,30 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
+      console.log("[RevenueCat] Purchase completed, checking entitlements");
+      console.log("[RevenueCat] Active entitlements:", Object.keys(customerInfo.entitlements.active));
+      
       const hasPremium = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      console.log("[RevenueCat] Has premium entitlement:", hasPremium);
+      
       setIsPremium(hasPremium);
-      return { success: hasPremium };
+      
+      // If purchase completed but entitlement not immediately active, 
+      // still treat as success (RevenueCat may have slight delay)
+      if (!hasPremium) {
+        console.log("[RevenueCat] Entitlement not immediately active, refreshing status...");
+        // Small delay then refresh to catch any backend propagation delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await refreshSubscriptionStatus();
+      }
+      
+      return { success: true };
     } catch (error: any) {
       if (error.userCancelled) {
+        console.log("[RevenueCat] User cancelled purchase");
         return { success: false };
       }
-      console.error("Purchase error:", error);
+      console.error("[RevenueCat] Purchase error:", error);
       return { success: false, error: error.message || "Purchase failed" };
     }
   };

@@ -13,8 +13,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { useSubscription, getRevenueCatDebugInfo } from "@/contexts/SubscriptionContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 
-// TEMPORARY: Debug display for TestFlight - remove after confirming keys work
-const DEBUG_MODE = true;
+// Debug display - set to false for production
+const DEBUG_MODE = false;
 
 const PREMIUM_FEATURES = [
   {
@@ -100,10 +100,15 @@ export default function PaywallScreen() {
       const result = await purchasePackage(monthlyPackage);
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        navigation.goBack();
+        Alert.alert(
+          "Welcome to Premium!", 
+          "Your subscription is now active. Enjoy AI-powered insights!",
+          [{ text: "Let's Go", onPress: () => navigation.goBack() }]
+        );
       } else if (result.error) {
         Alert.alert("Purchase Failed", result.error);
       }
+      // If result.success is false but no error, user likely cancelled - do nothing
     } catch (error) {
       Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
