@@ -877,12 +877,148 @@
       font-size: 16px;
       color: var(--text-secondary);
     }
+
+    .app-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .app-modal-overlay.active {
+      display: flex;
+    }
+
+    .app-modal {
+      background: var(--surface-elevated);
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      position: relative;
+      border: 1px solid var(--border);
+      animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .app-modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 28px;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+    }
+
+    .app-modal-close:hover {
+      background: var(--surface);
+      color: var(--text-primary);
+    }
+
+    .app-modal-icon {
+      width: 72px;
+      height: 72px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+
+    .app-modal-icon svg {
+      width: 36px;
+      height: 36px;
+      fill: white;
+    }
+
+    .app-modal-title {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    .app-modal-text {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    .app-modal-buttons {
+      margin-bottom: 16px;
+    }
+
+    .app-store-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      font-size: 15px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .app-store-btn svg {
+      flex-shrink: 0;
+    }
+
+    .app-modal-note {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
   <div class="loading-overlay" id="loadingOverlay">
     <div class="loader"></div>
     <div class="loading-text">Opening Briefcase...</div>
+  </div>
+
+  <div class="app-modal-overlay" id="appModalOverlay">
+    <div class="app-modal">
+      <button class="app-modal-close" id="appModalClose">&times;</button>
+      <div class="app-modal-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+      </div>
+      <h2 class="app-modal-title">Briefcase is a Mobile App</h2>
+      <p class="app-modal-text">Get the full Briefcase experience on your iPhone or iPad. Our mobile app offers real-time portfolio tracking, AI-powered insights, and seamless investing tools.</p>
+      <div class="app-modal-buttons">
+        <a href="#" class="btn btn-primary app-store-btn" id="appStoreLink">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          Download on App Store
+        </a>
+      </div>
+      <p class="app-modal-note">Coming soon to the App Store</p>
+    </div>
   </div>
 
   <nav>
@@ -1202,18 +1338,35 @@
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const getStartedButtons = document.querySelectorAll('#getStartedNav, #getStartedHero, #getStartedFree, #getStartedPremium, #getStartedCta');
-      const loadingOverlay = document.getElementById('loadingOverlay');
+      const appModalOverlay = document.getElementById('appModalOverlay');
+      const appModalClose = document.getElementById('appModalClose');
+      const appStoreLink = document.getElementById('appStoreLink');
 
+      // Show app download modal when Get Started is clicked
       getStartedButtons.forEach(button => {
         button.addEventListener('click', function(e) {
           e.preventDefault();
-          loadingOverlay.classList.add('active');
-          
-          // Redirect to auth flow
-          setTimeout(() => {
-            window.location.href = '/api/auth/login';
-          }, 500);
+          appModalOverlay.classList.add('active');
         });
+      });
+
+      // Close modal when X is clicked
+      appModalClose.addEventListener('click', function() {
+        appModalOverlay.classList.remove('active');
+      });
+
+      // Close modal when clicking outside
+      appModalOverlay.addEventListener('click', function(e) {
+        if (e.target === appModalOverlay) {
+          appModalOverlay.classList.remove('active');
+        }
+      });
+
+      // App Store link - currently shows coming soon behavior
+      appStoreLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        // TODO: Replace with actual App Store link when available
+        // window.location.href = 'https://apps.apple.com/app/briefcase/id...';
       });
 
       // Smooth scroll for anchor links
