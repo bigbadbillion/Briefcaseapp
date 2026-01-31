@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
 import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -256,6 +257,24 @@ export default function PaywallScreen() {
             </ThemedText>
           </Pressable>
 
+          <Pressable 
+            onPress={() => WebBrowser.openBrowserAsync("https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")}
+            style={styles.legalLink}
+          >
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              View Agreement
+            </ThemedText>
+          </Pressable>
+
+          <Pressable 
+            onPress={() => WebBrowser.openBrowserAsync("https://briefcaseapp.replit.app/privacy")}
+            style={styles.legalLink}
+          >
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              Privacy Policy
+            </ThemedText>
+          </Pressable>
+
           {Platform.OS === "ios" && (
             <ThemedText 
               type="caption" 
@@ -362,6 +381,10 @@ const styles = StyleSheet.create({
   restoreButton: {
     marginTop: Spacing.lg,
     paddingVertical: Spacing.sm,
+  },
+  legalLink: {
+    marginTop: Spacing.sm,
+    paddingVertical: Spacing.xs,
   },
   disclaimer: {
     marginTop: Spacing.xl,
