@@ -461,6 +461,36 @@ export default function ProfileScreen() {
               </View>
             </Pressable>
 
+            {Platform.OS === "ios" ? (
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  Linking.openURL("https://apps.apple.com/account/subscriptions");
+                }}
+                style={({ pressed }) => [
+                  styles.settingsRow,
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <View style={styles.settingsRowLeft}>
+                  <View
+                    style={[
+                      styles.settingsIcon,
+                      { backgroundColor: theme.backgroundSecondary },
+                    ]}
+                  >
+                    <Feather name="credit-card" size={16} color={theme.primary} />
+                  </View>
+                  <ThemedText type="body">Manage Subscription</ThemedText>
+                </View>
+                <Feather
+                  name="external-link"
+                  size={18}
+                  color={theme.textSecondary}
+                />
+              </Pressable>
+            ) : null}
+
             <SettingsRow
               icon="info"
               label="App Version"
