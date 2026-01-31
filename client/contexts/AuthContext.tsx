@@ -33,6 +33,7 @@ interface AuthContextType {
   verifyEmail: (token: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (name: string) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -254,6 +255,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await refreshUserData();
   }, [token]);
 
+  const deleteAccount = useCallback(async () => {
+    if (!token) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    try {
+      const response = await fetch(new URL("/api/auth/delete-account", getApiUrl()).toString(), {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || "Failed to delete account" };
+      }
+
+      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+      await AsyncStorage.removeItem(AUTH_USER_KEY);
+      setToken(null);
+      setUser(null);
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: "Network error. Please try again." };
+    }
+  }, [token]);
+
   const value: AuthContextType = {
     user,
     token,
@@ -266,6 +297,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     verifyEmail,
     updateProfile,
     refreshUser,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -43,7 +43,7 @@ export default function ProfileScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useTheme();
-  const { user, signOut, updateProfile } = useAuth();
+  const { user, signOut, updateProfile, deleteAccount } = useAuth();
 
   const { data: holdings = [], isLoading: loading, refetch: refetchHoldings } = useHoldings();
   const clearAllHoldings = useClearAllHoldings();
@@ -55,6 +55,7 @@ export default function ProfileScreen() {
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [editingName, setEditingName] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const loadSettings = useCallback(async () => {
     const storedNotifications = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
@@ -162,6 +163,32 @@ export default function ProfileScreen() {
           onPress: async () => {
             await clearAllHoldings.mutateAsync();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your account and all associated data including holdings, settings, and sessions. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: async () => {
+            setIsDeletingAccount(true);
+            const result = await deleteAccount();
+            setIsDeletingAccount(false);
+            
+            if (result.success) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } else {
+              Alert.alert("Error", result.error || "Failed to delete account");
+            }
           },
         },
       ]
@@ -460,6 +487,14 @@ export default function ProfileScreen() {
             </ThemedText>
             <Button variant="danger" onPress={handleClearData}>
               Clear All Data
+            </Button>
+            <Button 
+              variant="danger" 
+              onPress={handleDeleteAccount}
+              disabled={isDeletingAccount}
+              style={{ marginTop: Spacing.md }}
+            >
+              {isDeletingAccount ? "Deleting..." : "Delete Account"}
             </Button>
           </Card>
         </Animated.View>
