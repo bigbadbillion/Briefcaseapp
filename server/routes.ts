@@ -265,6 +265,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/auth/delete-account", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      const deleted = await storage.deleteUser(userId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+
+      res.json({ success: true, message: "Account deleted successfully" });
+    } catch (error) {
+      console.error("Error in /api/auth/delete-account:", error);
+      res.status(500).json({ error: "Failed to delete account" });
+    }
+  });
+
   app.get("/api/holdings", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
     try {
       const holdings = await storage.getHoldingsByUser(req.user!.id);

@@ -18,6 +18,7 @@ export interface IStorage {
   getUserByAppleId(appleId: string): Promise<User | undefined>;
   createUser(user: InsertUser & { verificationToken?: string; verificationExpires?: Date; appleId?: string; emailVerified?: boolean }): Promise<User>;
   updateUser(id: string, data: Partial<User>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
   
   createSession(userId: string, token: string, expiresAt: Date): Promise<Session>;
   getSessionByToken(token: string): Promise<Session | undefined>;
@@ -68,6 +69,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user || undefined;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db
+      .delete(users)
+      .where(eq(users.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   async createSession(userId: string, token: string, expiresAt: Date): Promise<Session> {
