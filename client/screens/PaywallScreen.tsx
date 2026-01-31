@@ -275,17 +275,15 @@ export default function PaywallScreen() {
             </ThemedText>
           </Pressable>
 
-          {Platform.OS === "ios" && (
-            <ThemedText 
-              type="caption" 
-              style={[styles.disclaimer, { color: theme.textSecondary }]}
-            >
-              Payment will be charged to your Apple ID account at the confirmation of purchase. 
-              Subscription automatically renews unless it is canceled at least 24 hours before 
-              the end of the current period. Your account will be charged for renewal within 
-              24 hours prior to the end of the current period.
-            </ThemedText>
-          )}
+          <ThemedText 
+            type="caption" 
+            style={[styles.disclaimer, { color: theme.textSecondary }]}
+          >
+            Payment will be charged to your Apple ID account at the confirmation of purchase. 
+            Subscription automatically renews unless it is canceled at least 24 hours before 
+            the end of the current period. Your account will be charged for renewal within 
+            24 hours prior to the end of the current period.
+          </ThemedText>
         </Animated.View>
       </ScrollView>
 
