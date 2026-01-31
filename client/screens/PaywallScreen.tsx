@@ -279,6 +279,7 @@ export default function PaywallScreen() {
             type="caption" 
             style={[styles.disclaimer, { color: theme.textSecondary }]}
           >
+            Your first payment will be charged once the 3-day free trial ends. 
             Payment will be charged to your Apple ID account at the confirmation of purchase. 
             Subscription automatically renews unless it is canceled at least 24 hours before 
             the end of the current period. Your account will be charged for renewal within 
