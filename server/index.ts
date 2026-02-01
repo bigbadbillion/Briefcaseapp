@@ -185,10 +185,17 @@ function configureExpoAndLanding(app: express.Application) {
     "templates",
     "tech-docs.html",
   );
+  const proposalPath = path.resolve(
+    process.cwd(),
+    "server",
+    "templates",
+    "proposal.html",
+  );
   const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
   const privacyPageTemplate = fs.readFileSync(privacyPath, "utf-8");
   const supportPageTemplate = fs.readFileSync(supportPath, "utf-8");
   const docsPageTemplate = fs.readFileSync(docsPath, "utf-8");
+  const proposalPageTemplate = fs.readFileSync(proposalPath, "utf-8");
   const appName = getAppName();
 
   log("Serving static Expo files with dynamic manifest routing");
@@ -198,7 +205,7 @@ function configureExpoAndLanding(app: express.Application) {
       return next();
     }
 
-    if (req.path !== "/" && req.path !== "/manifest" && req.path !== "/privacy" && req.path !== "/support" && req.path !== "/docs") {
+    if (req.path !== "/" && req.path !== "/manifest" && req.path !== "/privacy" && req.path !== "/support" && req.path !== "/docs" && req.path !== "/proposal") {
       return next();
     }
 
@@ -220,6 +227,11 @@ function configureExpoAndLanding(app: express.Application) {
     if (req.path === "/docs") {
       res.setHeader("Content-Type", "text/html");
       return res.status(200).send(docsPageTemplate);
+    }
+
+    if (req.path === "/proposal") {
+      res.setHeader("Content-Type", "text/html");
+      return res.status(200).send(proposalPageTemplate);
     }
 
     if (req.path === "/") {
