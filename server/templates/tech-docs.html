@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Technical Documentation - Briefcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #1B4332;
+      --accent: #F4A259;
+      --bg-dark: #0F1115;
+      --surface-dark: #1A1D23;
+      --surface-elevated: #252932;
+      --text-primary: #E8E9ED;
+      --text-secondary: #9CA3AF;
+      --success: #059669;
+      --error: #DC2626;
+      --code-bg: #1E2128;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.7;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 0;
+      background: rgba(15, 17, 21, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary) 0%, #2D6A4F 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: white;
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .nav-back {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s;
+    }
+
+    .nav-back:hover {
+      color: var(--text-primary);
+    }
+
+    .hero {
+      padding: 140px 0 60px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(27, 67, 50, 0.2);
+      border: 1px solid rgba(27, 67, 50, 0.4);
+      color: #4ADE80;
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -1.5px;
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .toc {
+      padding: 40px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .toc h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .toc-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .toc-link {
+      background: var(--surface-elevated);
+      color: var(--text-primary);
+      text-decoration: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .toc-link:hover {
+      background: #2F3440;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .section {
+      padding: 60px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .section:last-child {
+      border-bottom: none;
+    }
+
+    .section h2 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section h2 .icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary) 0%, #2D6A4F 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .section h2 .icon svg {
+      width: 20px;
+      height: 20px;
+      fill: white;
+    }
+
+    .section h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 32px 0 16px;
+      color: var(--accent);
+    }
+
+    .section p {
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .tech-card {
+      background: var(--surface-dark);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .tech-card h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .tech-card ul {
+      list-style: none;
+    }
+
+    .tech-card li {
+      padding: 6px 0;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tech-card li::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      background: var(--primary);
+      border-radius: 50%;
+    }
+
+    .arch-diagram {
+      background: var(--surface-dark);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 32px;
+      margin: 24px 0;
+    }
+
+    .arch-layer {
+      background: var(--surface-elevated);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .arch-layer:last-child {
+      margin-bottom: 0;
+    }
+
+    .arch-layer::after {
+      content: "";
+      position: absolute;
+      bottom: -16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 16px;
+      background: linear-gradient(180deg, var(--primary) 0%, transparent 100%);
+    }
+
+    .arch-layer:last-child::after {
+      display: none;
+    }
+
+    .arch-layer-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .arch-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .arch-item {
+      background: var(--code-bg);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+      overflow-x: auto;
+    }
+
+    .code-block pre {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-primary);
+    }
+
+    .code-block .comment {
+      color: var(--text-secondary);
+    }
+
+    .code-block .keyword {
+      color: #C792EA;
+    }
+
+    .code-block .string {
+      color: #C3E88D;
+    }
+
+    .code-block .function {
+      color: #82AAFF;
+    }
+
+    .flow-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .flow-number {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--primary) 0%, #2D6A4F 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .flow-content {
+      background: var(--surface-dark);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 16px 20px;
+      flex: 1;
+    }
+
+    .flow-content strong {
+      color: var(--text-primary);
+    }
+
+    .flow-content p {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .info-box {
+      background: rgba(27, 67, 50, 0.15);
+      border: 1px solid rgba(27, 67, 50, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+
+    .info-box-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #4ADE80;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-box p {
+      color: var(--text-secondary);
+      margin: 0;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    th {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: var(--surface-dark);
+    }
+
+    td {
+      font-size: 14px;
+    }
+
+    td code {
+      font-family: 'IBM Plex Mono', monospace;
+      background: var(--code-bg);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    footer {
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 32px;
+      }
+
+      .section h2 {
+        font-size: 24px;
+      }
+
+      .tech-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .arch-items {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container nav-content">
+      <a href="/" class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm10 16H4V8h16v12z"/>
+            <path d="M13 10h-2v3H8v2h3v3h2v-3h3v-2h-3z"/>
+          </svg>
+        </div>
+        <span class="logo-text">Briefcase</span>
+      </a>
+      <a href="/" class="nav-back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Home
+      </a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">Technical Documentation</div>
+      <h1>Under the Hood</h1>
+      <p>A comprehensive look at the technologies, architecture, and implementation details that power Briefcase.</p>
+    </div>
+  </section>
+
+  <section class="toc">
+    <div class="container">
+      <h2>Contents</h2>
+      <div class="toc-list">
+        <a href="#tech-stack" class="toc-link">Tech Stack</a>
+        <a href="#architecture" class="toc-link">Architecture</a>
+        <a href="#data-flow" class="toc-link">Data Flow</a>
+        <a href="#apis" class="toc-link">External APIs</a>
+        <a href="#revenuecat" class="toc-link">RevenueCat Implementation</a>
+        <a href="#security" class="toc-link">Security</a>
+      </div>
+    </div>
+  </section>
+
+  <main class="container">
+    <section id="tech-stack" class="section">
+      <h2>
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </span>
+        Tech Stack
+      </h2>
+      <p>Briefcase is built with a modern, type-safe stack optimized for cross-platform mobile development and real-time data handling.</p>
+      
+      <div class="tech-grid">
+        <div class="tech-card">
+          <h4>Languages</h4>
+          <ul>
+            <li>TypeScript (Frontend & Backend)</li>
+            <li>SQL (via Drizzle ORM)</li>
+            <li>HTML/CSS (Landing Pages)</li>
+          </ul>
+        </div>
+        
+        <div class="tech-card">
+          <h4>Frontend</h4>
+          <ul>
+            <li>React Native</li>
+            <li>Expo SDK 54</li>
+            <li>React Navigation v7</li>
+            <li>TanStack React Query</li>
+            <li>React Native Reanimated</li>
+          </ul>
+        </div>
+        
+        <div class="tech-card">
+          <h4>Backend</h4>
+          <ul>
+            <li>Node.js</li>
+            <li>Express.js v5</li>
+            <li>Drizzle ORM</li>
+            <li>PostgreSQL (Neon)</li>
+          </ul>
+        </div>
+        
+        <div class="tech-card">
+          <h4>Cloud Services</h4>
+          <ul>
+            <li>Replit (Hosting & Deployment)</li>
+            <li>RevenueCat (Subscriptions)</li>
+            <li>Google Gemini (AI)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture" class="section">
+      <h2>
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 3h18v18H3V3zm16 16V5H5v14h14zM7 7h4v4H7V7zm6 0h4v4h-4V7zm-6 6h4v4H7v-4zm6 0h4v4h-4v-4z"/>
+          </svg>
+        </span>
+        Architecture
+      </h2>
+      <p>The application follows a clean client-server architecture with shared type definitions for end-to-end type safety.</p>
+
+      <div class="arch-diagram">
+        <div class="arch-layer">
+          <div class="arch-layer-title">Mobile Client (Expo)</div>
+          <div class="arch-items">
+            <span class="arch-item">React Native Components</span>
+            <span class="arch-item">React Navigation</span>
+            <span class="arch-item">TanStack Query</span>
+            <span class="arch-item">RevenueCat SDK</span>
+          </div>
+        </div>
+        
+        <div class="arch-layer">
+          <div class="arch-layer-title">API Layer (Express.js)</div>
+          <div class="arch-items">
+            <span class="arch-item">REST Endpoints</span>
+            <span class="arch-item">Authentication Middleware</span>
+            <span class="arch-item">Session Management</span>
+            <span class="arch-item">Rate Limiting</span>
+          </div>
+        </div>
+        
+        <div class="arch-layer">
+          <div class="arch-layer-title">Data Layer</div>
+          <div class="arch-items">
+            <span class="arch-item">Drizzle ORM</span>
+            <span class="arch-item">PostgreSQL</span>
+            <span class="arch-item">Zod Validation</span>
+          </div>
+        </div>
+        
+        <div class="arch-layer">
+          <div class="arch-layer-title">External Services</div>
+          <div class="arch-items">
+            <span class="arch-item">Google Gemini</span>
+            <span class="arch-item">Finnhub API</span>
+            <span class="arch-item">CoinGecko API</span>
+            <span class="arch-item">RevenueCat</span>
+          </div>
+        </div>
+      </div>
+
+      <h3>Directory Structure</h3>
+      <div class="code-block">
+        <pre><span class="comment">// Project Layout</span>
+briefcase/
+├── client/                 <span class="comment"># React Native app</span>
+│   ├── components/         <span class="comment"># Reusable UI components</span>
+│   ├── screens/            <span class="comment"># Screen components</span>
+│   ├── contexts/           <span class="comment"># React contexts (Auth, Theme, Subscription)</span>
+│   ├── hooks/              <span class="comment"># Custom hooks</span>
+│   └── navigation/         <span class="comment"># React Navigation setup</span>
+├── server/                 <span class="comment"># Express.js backend</span>
+│   ├── routes.ts           <span class="comment"># API endpoints</span>
+│   ├── storage.ts          <span class="comment"># Database operations</span>
+│   └── templates/          <span class="comment"># HTML templates</span>
+├── shared/                 <span class="comment"># Shared types & schemas</span>
+│   └── schema.ts           <span class="comment"># Drizzle schema + Zod types</span>
+└── migrations/             <span class="comment"># Database migrations</span></pre>
+      </div>
+    </section>
+
+    <section id="data-flow" class="section">
+      <h2>
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+          </svg>
+        </span>
+        Data Flow
+      </h2>
+
+      <h3>Authentication Flow</h3>
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <div class="flow-number">1</div>
+          <div class="flow-content">
+            <strong>Registration</strong>
+            <p>User submits email/password, server creates account with bcrypt-hashed password</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-number">2</div>
+          <div class="flow-content">
+            <strong>Email Verification</strong>
+            <p>24-hour token sent via email, user clicks link to verify</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-number">3</div>
+          <div class="flow-content">
+            <strong>Session Creation</strong>
+            <p>Login generates session token stored in PostgreSQL</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-number">4</div>
+          <div class="flow-content">
+            <strong>API Authentication</strong>
+            <p>Session token sent in headers, validated on each request</p>
+          </div>
+        </div>
+      </div>
+
+      <h3>Portfolio Data Flow</h3>
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <div class="flow-number">1</div>
+          <div class="flow-content">
+            <strong>Add Holding</strong>
+            <p>User searches asset via Finnhub/CoinGecko autocomplete</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-number">2</div>
+          <div class="flow-content">
+            <strong>Price Fetch</strong>
+            <p>Current price automatically fetched from market data APIs</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-number">3</div>
+          <div class="flow-content">
+            <strong>Persistence</strong>
+            <p>Holding saved to PostgreSQL with user association</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-number">4</div>
+          <div class="flow-content">
+            <strong>Real-time Updates</strong>
+            <p>Dashboard refreshes prices on focus via TanStack Query</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="apis" class="section">
+      <h2>
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+          </svg>
+        </span>
+        External APIs
+      </h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Purpose</th>
+            <th>Rate Limit</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Google Gemini</strong></td>
+            <td>AI chatbot, portfolio insights, recommendations</td>
+            <td>15 RPM (free tier)</td>
+          </tr>
+          <tr>
+            <td><strong>Finnhub</strong></td>
+            <td>Stock/ETF prices, search autocomplete</td>
+            <td>60 calls/min</td>
+          </tr>
+          <tr>
+            <td><strong>CoinGecko</strong></td>
+            <td>Cryptocurrency prices, market data</td>
+            <td>No key required</td>
+          </tr>
+          <tr>
+            <td><strong>Alpha Vantage</strong></td>
+            <td>Backup stock data source</td>
+            <td>5 calls/min</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="info-box">
+        <div class="info-box-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+          </svg>
+          Graceful Degradation
+        </div>
+        <p>All API integrations are designed to fail gracefully. If Gemini is unavailable, AI features show helpful fallback messages. Price APIs have built-in caching to reduce API calls and improve performance.</p>
+      </div>
+    </section>
+
+    <section id="revenuecat" class="section">
+      <h2>
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+          </svg>
+        </span>
+        RevenueCat Implementation
+      </h2>
+      <p>Briefcase uses RevenueCat for subscription management, providing a unified API across iOS and Android for handling in-app purchases.</p>
+
+      <h3>Configuration</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Product ID</td>
+            <td><code>monthly_499</code></td>
+          </tr>
+          <tr>
+            <td>Entitlement ID</td>
+            <td><code>Briefcase Pro</code></td>
+          </tr>
+          <tr>
+            <td>Price</td>
+            <td>$4.99/month</td>
+          </tr>
+          <tr>
+            <td>Free Trial</td>
+            <td>3 days</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Implementation Flow</h3>
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <div class="flow-number">1</div>
+          <div class="flow-content">
+            <strong>SDK Initialization</strong>
+            <p>RevenueCat configured on app launch with public API key</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-number">2</div>
+          <div class="flow-content">
+            <strong>Entitlement Check</strong>
+            <p>SubscriptionContext checks for "Briefcase Pro" entitlement</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-number">3</div>
+          <div class="flow-content">
+            <strong>Paywall Display</strong>
+            <p>Non-premium users see upgrade prompts for AI features</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-number">4</div>
+          <div class="flow-content">
+            <strong>Purchase Flow</strong>
+            <p>Native iOS purchase sheet with 3-day trial offer</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-number">5</div>
+          <div class="flow-content">
+            <strong>Entitlement Grant</strong>
+            <p>RevenueCat automatically grants access upon successful purchase</p>
+          </div>
+        </div>
+      </div>
+
+      <h3>Premium-Gated Features</h3>
+      <div class="tech-grid">
+        <div class="tech-card">
+          <h4>AI Features</h4>
+          <ul>
+            <li>AI Chat Modal</li>
+            <li>Portfolio Recommendations</li>
+            <li>AI-Powered Insights</li>
+            <li>Smart Alerts</li>
+          </ul>
+        </div>
+        <div class="tech-card">
+          <h4>Free Features</h4>
+          <ul>
+            <li>Portfolio Tracking</li>
+            <li>Real-time Prices</li>
+            <li>Basic Analytics</li>
+            <li>Holdings Management</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Code Example</h3>
+      <div class="code-block">
+        <pre><span class="comment">// SubscriptionContext.tsx</span>
+<span class="keyword">const</span> ENTITLEMENT_ID = <span class="string">"Briefcase Pro"</span>;
+
+<span class="keyword">const</span> <span class="function">checkSubscriptionStatus</span> = <span class="keyword">async</span> () => {
+  <span class="keyword">try</span> {
+    <span class="keyword">const</span> customerInfo = <span class="keyword">await</span> Purchases.<span class="function">getCustomerInfo</span>();
+    <span class="keyword">const</span> isPremium = customerInfo.entitlements.active[ENTITLEMENT_ID] !== <span class="keyword">undefined</span>;
+    <span class="function">setIsPremium</span>(isPremium);
+  } <span class="keyword">catch</span> (error) {
+    console.<span class="function">error</span>(<span class="string">"Failed to check subscription"</span>, error);
+  }
+};
+
+<span class="comment">// Usage in components</span>
+<span class="keyword">const</span> { isPremium } = <span class="function">useSubscription</span>();
+
+{isPremium ? (
+  &lt;AIChatInterface /&gt;
+) : (
+  &lt;UpgradeCard onPress={() => navigation.<span class="function">navigate</span>(<span class="string">"Paywall"</span>)} /&gt;
+)}</pre>
+      </div>
+    </section>
+
+    <section id="security" class="section">
+      <h2>
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+          </svg>
+        </span>
+        Security
+      </h2>
+
+      <div class="tech-grid">
+        <div class="tech-card">
+          <h4>Authentication</h4>
+          <ul>
+            <li>bcrypt password hashing</li>
+            <li>Secure session tokens</li>
+            <li>Email verification</li>
+            <li>24-hour token expiry</li>
+          </ul>
+        </div>
+        <div class="tech-card">
+          <h4>Data Protection</h4>
+          <ul>
+            <li>Environment secrets for API keys</li>
+            <li>PostgreSQL with encrypted connections</li>
+            <li>HTTPS-only communication</li>
+            <li>User data isolation</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+          </svg>
+          Secrets Management
+        </div>
+        <p>All sensitive API keys (Gemini, Finnhub, Session Secret) are stored as encrypted environment variables in Replit's secrets manager. The RevenueCat public API key is safely embedded in the app as it's designed to be client-facing.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>Briefcase Technical Documentation &middot; Built for the Gemini Hackathon</p>
+      <p style="margin-top: 8px;"><a href="/">Back to Home</a> &middot; <a href="/privacy">Privacy Policy</a> &middot; <a href="/terms">Terms of Service</a></p>
+    </div>
+  </footer>
+</body>
+</html>
