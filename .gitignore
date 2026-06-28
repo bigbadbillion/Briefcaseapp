@@ -41,3 +41,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Replit local agent/config (not part of the app)
+.local/
+.config/
