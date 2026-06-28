@@ -10,6 +10,7 @@ import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated"
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { getApiUrl } from "@/lib/query-client";
 import { useTheme } from "@/hooks/useTheme";
 import { useSubscription, getRevenueCatDebugInfo } from "@/contexts/SubscriptionContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
@@ -267,7 +268,7 @@ export default function PaywallScreen() {
           </Pressable>
 
           <Pressable 
-            onPress={() => WebBrowser.openBrowserAsync("https://briefcaseapp.replit.app/privacy")}
+            onPress={() => WebBrowser.openBrowserAsync(new URL("/privacy", getApiUrl()).toString())}
             style={styles.legalLink}
           >
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>

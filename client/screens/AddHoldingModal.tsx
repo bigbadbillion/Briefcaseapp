@@ -171,7 +171,7 @@ export default function AddHoldingModal() {
 
   const renderAssetChip = (asset: AssetSearchResult, index: number) => (
     <Animated.View
-      key={`${asset.id}-${asset.symbol}`}
+      key={`${asset.type}-${asset.symbol}-${index}`}
       entering={FadeInDown.delay(index * 30).duration(200)}
     >
       <Pressable
@@ -388,7 +388,7 @@ export default function AddHoldingModal() {
               <Card style={styles.searchResultsCard}>
                 <FlatList
                   data={searchResults}
-                  keyExtractor={(item) => `${item.id}-${item.symbol}`}
+                  keyExtractor={(item, index) => `${item.type}-${item.symbol}-${index}`}
                   renderItem={renderSearchResult}
                   scrollEnabled={false}
                 />

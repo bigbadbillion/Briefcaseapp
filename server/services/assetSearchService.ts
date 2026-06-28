@@ -163,16 +163,23 @@ export async function searchStocks(query: string): Promise<AssetSearchResult[]> 
     const data = await response.json();
     const results = data.result?.slice(0, 10) || [];
     
+    const seen = new Set<string>();
+
     return results
       .filter((item: any) => item.type === "Common Stock" || item.type === "ETF")
       .map((item: any) => {
-        const type = item.type === "ETF" ? "etf" : "stock";
+        const assetType = item.type === "ETF" ? "etf" : "stock";
         return {
-          id: item.symbol,
+          id: `${item.symbol}-${assetType}`,
           symbol: item.symbol,
           name: item.description,
-          type: type as "stock" | "etf",
+          type: assetType as "stock" | "etf",
         };
+      })
+      .filter((item) => {
+        if (seen.has(item.symbol)) return false;
+        seen.add(item.symbol);
+        return true;
       });
   } catch (error) {
     console.error("Error searching stocks:", error);
