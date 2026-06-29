@@ -3,6 +3,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getApiUrl, apiRequest } from "@/lib/query-client";
 import { fetchAllPrices, createPriceMap, type PriceData } from "@/lib/priceService";
 import {
+  loadPriceCache,
+  savePriceCache,
+  resolveHoldingPrice,
+} from "@/lib/priceCache";
+import {
   calculatePortfolioMetrics as computePortfolioMetrics,
   type PortfolioHoldingInput,
 } from "@shared/portfolioMetrics";
@@ -49,16 +54,31 @@ async function fetchHoldings(token: string): Promise<Holding[]> {
 
 async function fetchHoldingsWithPrices(token: string): Promise<Holding[]> {
   const holdings = await fetchHoldings(token);
-  
+
   if (holdings.length === 0) return [];
-  
-  const symbols = holdings.map(h => h.symbol);
+
+  const symbols = holdings.map((h) => h.symbol);
+  const cachedPrices = await loadPriceCache();
   const priceResponse = await fetchAllPrices(symbols);
   const priceMap = createPriceMap(priceResponse.prices);
-  
-  return holdings.map(holding => ({
+
+  if (priceResponse.prices.length > 0) {
+    await savePriceCache(priceResponse.prices);
+  }
+
+  const mergedPrices = new Map(cachedPrices);
+  for (const price of priceResponse.prices) {
+    mergedPrices.set(price.symbol.toUpperCase(), price);
+  }
+
+  return holdings.map((holding) => ({
     ...holding,
-    currentPrice: priceMap.get(holding.symbol)?.price ?? holding.purchasePrice,
+    currentPrice: resolveHoldingPrice(
+      holding.symbol,
+      holding.purchasePrice,
+      priceMap.get(holding.symbol.toUpperCase()),
+      mergedPrices.get(holding.symbol.toUpperCase())
+    ),
   }));
 }
 
@@ -98,6 +118,7 @@ export function useAddHolding() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/holdings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/insights"] });
     },
   });
 }
@@ -126,6 +147,7 @@ export function useUpdateHolding() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/holdings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/insights"] });
     },
   });
 }
@@ -150,6 +172,7 @@ export function useDeleteHolding() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/holdings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/insights"] });
     },
   });
 }
@@ -174,6 +197,7 @@ export function useClearAllHoldings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/holdings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/insights"] });
     },
   });
 }

@@ -58,6 +58,9 @@ export async function fetchRevenueCatPremiumStatus(
   });
 
   if (response.status === 404) {
+    console.warn(
+      `[RevenueCat] No subscriber record for app user ${appUserId} (404)`
+    );
     return false;
   }
 
@@ -73,6 +76,10 @@ export async function fetchRevenueCatPremiumStatus(
     data.subscriber?.entitlements?.[REVENUECAT_ENTITLEMENT_ID];
 
   if (!entitlement) {
+    const known = Object.keys(data.subscriber?.entitlements ?? {});
+    console.warn(
+      `[RevenueCat] Entitlement "${REVENUECAT_ENTITLEMENT_ID}" not found for ${appUserId}. Known: ${known.join(", ") || "none"}`
+    );
     return false;
   }
 

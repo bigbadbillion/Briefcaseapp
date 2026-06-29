@@ -11,7 +11,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "me.echovault.briefcase",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "buildNumber": "2"
     },
     "android": {
       "adaptiveIcon": {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -6,14 +6,22 @@ import {
   FlatList,
   Pressable,
   Keyboard,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { KeyboardStickyView } from "react-native-keyboard-controller";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
@@ -37,7 +45,7 @@ interface Message {
 export default function AIChatModal() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
-  const { isPremium } = useSubscription();
+  const { isPremium, isLoading: subscriptionLoading } = useSubscription();
   const { token } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const flatListRef = useRef<FlatList>(null);
@@ -45,6 +53,13 @@ export default function AIChatModal() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  const handleInputFocus = useCallback(() => {
+    requestAnimationFrame(() => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+  }, []);
 
   const handleUpgrade = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -57,15 +72,15 @@ export default function AIChatModal() {
         id: "welcome",
         role: "assistant",
         content:
-          "Hi! I'm your Briefcase research copilot — I can check live prices, news, your holdings, and saved notes, then suggest where to dig deeper.\n\nI'm not a licensed financial advisor. What I share is a research starting point — always verify before you act.\n\nTry: \"What do I hold?\" or \"Any news on NVDA?\"",
+          "Hi! I'm your Briefcase research copilot — I can check live prices, news, your holdings, and saved notes, then suggest where to dig deeper.\n\nI'm not a licensed financial advisor. What I share is a research starting point — always verify before you act.",
         timestamp: new Date(),
       };
       setMessages([welcomeMessage]);
     }
   }, []);
 
-  const buildChatHistory = (): APIChatMessage[] => {
-    return messages
+  const buildChatHistory = (currentMessages: Message[]): APIChatMessage[] => {
+    return currentMessages
       .filter((m) => m.id !== "welcome")
       .slice(0, 10)
       .reverse()
@@ -75,12 +90,20 @@ export default function AIChatModal() {
       }));
   };
 
-  const handleSend = async () => {
-    if (!inputText.trim() || !token) return;
+  const canSend = !!inputText.trim() && !isTyping && !!token;
 
+  const handleSend = async (textOverride?: string) => {
+    const userMessageText = (textOverride ?? inputText).trim();
+    if (!userMessageText || isTyping) return;
+
+    if (!token) {
+      setSendError("Please sign in again to use AI chat.");
+      return;
+    }
+
+    setSendError(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const userMessageText = inputText.trim();
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -88,13 +111,14 @@ export default function AIChatModal() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [userMessage, ...prev]);
+    const nextMessages = [userMessage, ...messages];
+    setMessages(nextMessages);
     setInputText("");
     setIsTyping(true);
     Keyboard.dismiss();
 
     try {
-      const history = buildChatHistory();
+      const history = buildChatHistory(messages);
       const response = await sendChatMessage(token, userMessageText, history);
 
       const aiResponse: Message = {
@@ -122,12 +146,11 @@ export default function AIChatModal() {
     }
   };
 
-  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
+  const renderMessage = ({ item }: { item: Message; index: number }) => {
     const isUser = item.role === "user";
 
     return (
-      <Animated.View
-        entering={FadeInUp.delay(index * 50).duration(300)}
+      <View
         style={[
           styles.messageContainer,
           isUser ? styles.userMessageContainer : styles.assistantMessageContainer,
@@ -173,7 +196,7 @@ export default function AIChatModal() {
             </View>
           ) : null}
         </View>
-      </Animated.View>
+      </View>
     );
   };
 
@@ -222,6 +245,16 @@ export default function AIChatModal() {
     "How diversified am I?",
   ];
 
+  if (subscriptionLoading) {
+    return (
+      <View style={[styles.container, styles.premiumContainer, { backgroundColor: theme.backgroundRoot }]}>
+        <ThemedText type="body" style={{ color: theme.textSecondary }}>
+          Loading...
+        </ThemedText>
+      </View>
+    );
+  }
+
   if (!isPremium) {
     return (
       <View style={[styles.container, styles.premiumContainer, { backgroundColor: theme.backgroundRoot }]}>
@@ -252,13 +285,10 @@ export default function AIChatModal() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
-      behavior="padding"
-      keyboardVerticalOffset={0}
-    >
+    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <FlatList
         ref={flatListRef}
+        style={styles.messageList}
         inverted={messages.length > 0}
         data={messages}
         keyExtractor={(item) => item.id}
@@ -270,6 +300,8 @@ export default function AIChatModal() {
         ListHeaderComponent={renderTypingIndicator}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       />
 
       {messages.length === 1 ? (
@@ -278,8 +310,9 @@ export default function AIChatModal() {
             <Pressable
               key={question}
               onPress={() => {
-                setInputText(question);
+                void handleSend(question);
               }}
+              disabled={isTyping || !token}
               style={[
                 styles.suggestionChip,
                 { backgroundColor: theme.backgroundSecondary },
@@ -293,79 +326,108 @@ export default function AIChatModal() {
         </Animated.View>
       ) : null}
 
-      <View
-        style={[
-          styles.inputContainer,
-          {
-            backgroundColor: theme.backgroundRoot,
-            paddingBottom: insets.bottom > 0 ? insets.bottom : Spacing.lg,
-            borderTopColor: theme.border,
-          },
-        ]}
+      <KeyboardStickyView
+        offset={{
+          closed: 0,
+          opened: insets.bottom > 0 ? 0 : Spacing.sm,
+        }}
       >
         <View
           style={[
-            styles.inputWrapper,
+            styles.inputContainer,
             {
-              backgroundColor: theme.backgroundSecondary,
-              borderColor: isDark ? theme.border : "transparent",
-              borderWidth: isDark ? 1 : 0,
+              backgroundColor: theme.backgroundRoot,
+              paddingBottom: insets.bottom > 0 ? insets.bottom : Spacing.lg,
+              borderTopColor: theme.border,
             },
           ]}
         >
-          <TextInput
-            style={[styles.textInput, { color: theme.text, fontFamily: Fonts?.sans }]}
-            placeholder="Ask about your portfolio..."
-            placeholderTextColor={theme.textSecondary}
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={500}
-            onSubmitEditing={handleSend}
-          />
-          <Pressable
-            onPress={handleSend}
-            disabled={!inputText.trim() || isTyping}
+          {sendError ? (
+            <ThemedText type="caption" style={[styles.sendError, { color: theme.warning }]}>
+              {sendError}
+            </ThemedText>
+          ) : null}
+          <View
             style={[
-              styles.sendButton,
+              styles.inputWrapper,
               {
-                backgroundColor: inputText.trim() && !isTyping ? theme.primary : theme.backgroundTertiary,
+                backgroundColor: theme.backgroundSecondary,
+                borderColor: isDark ? theme.border : "transparent",
+                borderWidth: isDark ? 1 : 0,
               },
             ]}
           >
-            <Feather
-              name="send"
-              size={18}
-              color={inputText.trim() && !isTyping ? "#FFFFFF" : theme.textSecondary}
+            <TextInput
+              style={[styles.textInput, { color: theme.text, fontFamily: Fonts?.sans }]}
+              placeholder="Ask about your portfolio..."
+              placeholderTextColor={theme.textSecondary}
+              value={inputText}
+              onChangeText={(text) => {
+                setInputText(text);
+                if (sendError) setSendError(null);
+              }}
+              onFocus={handleInputFocus}
+              multiline
+              maxLength={500}
+              blurOnSubmit={false}
+              onSubmitEditing={() => {
+                void handleSend();
+              }}
             />
-          </Pressable>
+            <Pressable
+              onPress={() => {
+                void handleSend();
+              }}
+              disabled={!canSend}
+              hitSlop={8}
+              style={[
+                styles.sendButton,
+                {
+                  backgroundColor: canSend ? theme.primary : theme.backgroundTertiary,
+                },
+              ]}
+            >
+              <Feather
+                name="send"
+                size={18}
+                color={canSend ? "#FFFFFF" : theme.textSecondary}
+              />
+            </Pressable>
+          </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardStickyView>
+    </View>
   );
 }
 
 function TypingDot({ delay, theme }: { delay: number; theme: any }) {
-  const [opacity, setOpacity] = useState(0.3);
+  const opacity = useSharedValue(0.3);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setOpacity((prev) => (prev === 0.3 ? 1 : 0.3));
-    }, 600);
+    const timeout = setTimeout(() => {
+      opacity.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 300 }),
+          withTiming(0.3, { duration: 300 })
+        ),
+        -1,
+        false
+      );
+    }, delay);
 
-    const timeout = setTimeout(() => {}, delay);
+    return () => clearTimeout(timeout);
+  }, [delay, opacity]);
 
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  }, [delay]);
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
 
   return (
-    <View
+    <Animated.View
       style={[
         styles.typingDot,
-        { backgroundColor: theme.primary, opacity },
+        { backgroundColor: theme.primary },
+        animatedStyle,
       ]}
     />
   );
@@ -373,6 +435,9 @@ function TypingDot({ delay, theme }: { delay: number; theme: any }) {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  messageList: {
     flex: 1,
   },
   listContent: {
@@ -459,6 +524,10 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     paddingHorizontal: Spacing.lg,
     borderTopWidth: 1,
+    zIndex: 2,
+  },
+  sendError: {
+    marginBottom: Spacing.sm,
   },
   inputWrapper: {
     flexDirection: "row",

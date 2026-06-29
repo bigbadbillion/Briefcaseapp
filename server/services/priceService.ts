@@ -8,13 +8,16 @@ interface CacheEntry {
 }
 
 const priceCache: Map<string, CacheEntry> = new Map();
-const CACHE_TTL_MS = 60 * 1000; // Cache for 60 seconds
+const FRESH_CACHE_TTL_MS = 60 * 1000;
+const STALE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-function getCachedPrice(symbol: string): CacheEntry | null {
+function getCachedPrice(symbol: string, allowStale = false): CacheEntry | null {
   const entry = priceCache.get(symbol.toUpperCase());
-  if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
-    return entry;
-  }
+  if (!entry) return null;
+
+  const age = Date.now() - entry.timestamp;
+  if (age < FRESH_CACHE_TTL_MS) return entry;
+  if (allowStale && age < STALE_CACHE_TTL_MS) return entry;
   return null;
 }
 
@@ -139,9 +142,8 @@ export async function getCryptoPrices(symbols: string[]): Promise<PriceResult[]>
     for (const [coinId, priceData] of Object.entries(data)) {
       const symbol = idToSymbolMap[coinId];
       if (symbol && priceData) {
-        // Cache the result
         setCachedPrice(symbol, priceData.usd, priceData.usd_24h_change || 0);
-        
+
         results.push({
           symbol,
           price: priceData.usd,
@@ -150,8 +152,34 @@ export async function getCryptoPrices(symbols: string[]): Promise<PriceResult[]>
         });
       }
     }
+
+    for (const symbol of symbolsToFetch) {
+      if (results.some((r) => r.symbol === symbol)) continue;
+      const stale = getCachedPrice(symbol, true);
+      if (stale) {
+        results.push({
+          symbol,
+          price: stale.price,
+          change24h: stale.change24h,
+          source: "coingecko",
+        });
+      }
+    }
   } catch (error) {
     console.error("Error fetching crypto prices from CoinGecko:", error);
+
+    for (const symbol of symbolsToFetch) {
+      if (results.some((r) => r.symbol === symbol)) continue;
+      const stale = getCachedPrice(symbol, true);
+      if (stale) {
+        results.push({
+          symbol,
+          price: stale.price,
+          change24h: stale.change24h,
+          source: "coingecko",
+        });
+      }
+    }
   }
 
   return results;
@@ -169,30 +197,68 @@ export async function getStockPrices(
 
   // Finnhub allows parallel requests - batch them for efficiency
   const fetchPromises = symbols.map(async (symbol) => {
+    const upperSymbol = symbol.toUpperCase();
+    const cached = getCachedPrice(upperSymbol);
+    if (cached) {
+      return {
+        symbol: upperSymbol,
+        price: cached.price,
+        change24h: cached.change24h,
+        source: "finnhub" as const,
+      };
+    }
+
     try {
-      // Finnhub quote endpoint
-      const url = `https://finnhub.io/api/v1/quote?symbol=${symbol.toUpperCase()}&token=${apiKey}`;
+      const url = `https://finnhub.io/api/v1/quote?symbol=${upperSymbol}&token=${apiKey}`;
       const response = await fetch(url);
 
       if (!response.ok) {
         console.error(`Finnhub API error for ${symbol}: ${response.status}`);
+        const stale = getCachedPrice(upperSymbol, true);
+        if (stale) {
+          return {
+            symbol: upperSymbol,
+            price: stale.price,
+            change24h: stale.change24h,
+            source: "finnhub" as const,
+          };
+        }
         return null;
       }
 
       const data = await response.json();
-      
-      // Finnhub returns: c (current), d (change), dp (percent change), h (high), l (low), o (open), pc (previous close)
+
       if (data && data.c && data.c > 0) {
+        setCachedPrice(upperSymbol, data.c, data.dp || 0);
         return {
-          symbol: symbol.toUpperCase(),
+          symbol: upperSymbol,
           price: data.c,
-          change24h: data.dp || 0, // dp is the percentage change
+          change24h: data.dp || 0,
+          source: "finnhub" as const,
+        };
+      }
+
+      const stale = getCachedPrice(upperSymbol, true);
+      if (stale) {
+        return {
+          symbol: upperSymbol,
+          price: stale.price,
+          change24h: stale.change24h,
           source: "finnhub" as const,
         };
       }
       return null;
     } catch (error) {
       console.error(`Error fetching stock price for ${symbol}:`, error);
+      const stale = getCachedPrice(upperSymbol, true);
+      if (stale) {
+        return {
+          symbol: upperSymbol,
+          price: stale.price,
+          change24h: stale.change24h,
+          source: "finnhub" as const,
+        };
+      }
       return null;
     }
   });

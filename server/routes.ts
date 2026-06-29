@@ -592,7 +592,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "Missing app_user_id" });
         }
 
-        const result = await syncUserPremiumFromRevenueCat(appUserId);
+        const result = await syncUserPremiumFromRevenueCat(appUserId, {
+          allowDowngrade: true,
+        });
 
         console.info(
           JSON.stringify({

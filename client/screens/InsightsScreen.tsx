@@ -1,13 +1,14 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, View, ScrollView, RefreshControl, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
@@ -20,8 +21,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 import { useHoldings, calculatePortfolioMetrics } from "@/hooks/useHoldings";
-import { useAuth } from "@/contexts/AuthContext";
-import { getAIInsights } from "@/lib/aiService";
+import { useAIInsights } from "@/hooks/useAIInsights";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 const emptyInsightsImage = require("../assets/images/empty-insights.png");
@@ -37,44 +37,30 @@ export default function InsightsScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
-  const { isPremium } = useSubscription();
-  const { token } = useAuth();
+  const { isPremium, isLoading: subscriptionLoading } = useSubscription();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const queryClient = useQueryClient();
 
   const { data: holdings = [], isLoading: loading, refetch, isRefetching } = useHoldings();
-  const [aiInsightsText, setAiInsightsText] = useState<string | null>(null);
-  const [loadingAiInsights, setLoadingAiInsights] = useState(false);
-  const [aiInsightsFailed, setAiInsightsFailed] = useState(false);
+  const {
+    data: aiResult,
+    isLoading: loadingAiInsights,
+    isFetching: fetchingAiInsights,
+  } = useAIInsights();
+
+  const aiInsightsText =
+    aiResult?.configured && aiResult.insights ? aiResult.insights : null;
+  const aiInsightsFailed = !!aiResult && (!aiResult.configured || !aiResult.insights);
 
   const handleUpgrade = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate("Paywall");
   };
 
-  const fetchAiInsights = useCallback(async () => {
-    if (!isPremium || !token || holdings.length === 0) return;
-
-    setLoadingAiInsights(true);
-    const result = await getAIInsights(token);
-    if (result.configured && result.insights) {
-      setAiInsightsText(result.insights);
-      setAiInsightsFailed(false);
-    } else {
-      setAiInsightsFailed(true);
-    }
-    setLoadingAiInsights(false);
-  }, [isPremium, token, holdings.length]);
-
   const onRefresh = useCallback(async () => {
     await refetch();
-    await fetchAiInsights();
-  }, [refetch, fetchAiInsights]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void fetchAiInsights();
-    }, [fetchAiInsights])
-  );
+    await queryClient.invalidateQueries({ queryKey: ["/api/ai/insights"] });
+  }, [refetch, queryClient]);
 
   const metrics = calculatePortfolioMetrics(holdings);
 
@@ -209,7 +195,13 @@ export default function InsightsScreen() {
         <ThemedText type="h3" style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
           AI Recommendations
         </ThemedText>
-        {isPremium ? (
+        {subscriptionLoading ? (
+          <Card>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              Checking subscription...
+            </ThemedText>
+          </Card>
+        ) : isPremium ? (
           <Card>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Add holdings to receive personalized AI recommendations.
@@ -250,7 +242,7 @@ export default function InsightsScreen() {
       scrollIndicatorInsets={{ bottom: insets.bottom }}
       refreshControl={
         <RefreshControl
-          refreshing={isRefetching}
+          refreshing={isRefetching || fetchingAiInsights}
           onRefresh={onRefresh}
           tintColor={theme.primary}
         />
@@ -303,8 +295,7 @@ export default function InsightsScreen() {
                   { backgroundColor: theme.backgroundSecondary },
                 ]}
               >
-                <Animated.View
-                  entering={FadeIn.delay(300 + index * 100).duration(400)}
+                <View
                   style={[
                     styles.breakdownFill,
                     {
@@ -328,7 +319,13 @@ export default function InsightsScreen() {
       <ThemedText type="h3" style={styles.sectionTitle}>
         AI Recommendations
       </ThemedText>
-      {isPremium ? (
+      {subscriptionLoading ? (
+        <Card>
+          <ThemedText type="body" style={{ color: theme.textSecondary }}>
+            Checking subscription...
+          </ThemedText>
+        </Card>
+      ) : isPremium ? (
         loadingAiInsights ? (
           <Card>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>

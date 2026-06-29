@@ -12,7 +12,8 @@ export interface PremiumSyncResult {
 }
 
 export async function syncUserPremiumFromRevenueCat(
-  userId: string
+  userId: string,
+  options?: { allowDowngrade?: boolean }
 ): Promise<PremiumSyncResult> {
   const user = await storage.getUser(userId);
   if (!user) {
@@ -30,6 +31,13 @@ export async function syncUserPremiumFromRevenueCat(
 
   if (user.isPremium === hasPremium) {
     return { isPremium: hasPremium, updated: false };
+  }
+
+  if (!hasPremium && user.isPremium && !options?.allowDowngrade) {
+    console.warn(
+      `[Subscription] RevenueCat reports inactive for ${userId} but keeping is_premium=true (sync is upgrade-only; webhooks handle expiry)`
+    );
+    return { isPremium: true, updated: false, skipped: true };
   }
 
   await storage.updateUser(userId, { isPremium: hasPremium });

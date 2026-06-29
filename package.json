@@ -19,7 +19,8 @@
     "test:agent": "tsx --test server/services/agent/__tests__/injection.test.ts",
     "format": "prettier --write \"**/*.{js,ts,tsx,css,json}\"",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "sync:splash": "bash scripts/sync-splash-assets.sh"
   },
   "dependencies": {
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",

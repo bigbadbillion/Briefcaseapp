@@ -5,7 +5,6 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import Animated, { FadeIn, FadeInDown, Layout } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 
 import { HoldingItem } from "@/components/HoldingItem";
@@ -56,7 +55,7 @@ export default function HoldingsScreen() {
   sections.sort((a, b) => b.totalValue - a.totalValue);
 
   const renderHeader = () => (
-    <Animated.View entering={FadeIn.duration(300)} style={styles.searchContainer}>
+    <View style={styles.searchContainer}>
       <View
         style={[
           styles.searchInputContainer,
@@ -84,48 +83,39 @@ export default function HoldingsScreen() {
           />
         ) : null}
       </View>
-    </Animated.View>
+    </View>
   );
 
   const renderSectionList = () => {
-    return sections.map((section, sectionIndex) => (
-      <Animated.View
-        key={section.type}
-        entering={FadeIn.delay(sectionIndex * 100).duration(300)}
-        style={styles.section}
-      >
+    return sections.map((section) => (
+      <View key={section.type} style={styles.section}>
         <View style={styles.sectionHeader}>
           <ThemedText type="h4">{section.title}</ThemedText>
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
             ${section.totalValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </ThemedText>
         </View>
-        {section.data.map((item, index) => {
+        {section.data.map((item) => {
           const change = item.currentPrice - item.purchasePrice;
           const changePercent =
             ((item.currentPrice - item.purchasePrice) / item.purchasePrice) * 100;
 
           return (
-            <Animated.View
+            <HoldingItem
               key={item.id}
-              entering={FadeInDown.delay(index * 50).duration(300)}
-              layout={Layout.springify()}
-            >
-              <HoldingItem
-                name={item.name}
-                symbol={item.symbol}
-                value={item.currentPrice * item.quantity}
-                quantity={item.quantity}
-                change={change}
-                changePercent={changePercent}
-                type={item.type}
-                imageUrl={item.imageUrl}
-                onPress={() => navigation.navigate("AssetDetail", { id: item.id })}
-              />
-            </Animated.View>
+              name={item.name}
+              symbol={item.symbol}
+              value={item.currentPrice * item.quantity}
+              quantity={item.quantity}
+              change={change}
+              changePercent={changePercent}
+              type={item.type}
+              imageUrl={item.imageUrl}
+              onPress={() => navigation.navigate("AssetDetail", { id: item.id })}
+            />
           );
         })}
-      </Animated.View>
+      </View>
     ));
   };
 

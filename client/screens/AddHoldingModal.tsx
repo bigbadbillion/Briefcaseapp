@@ -172,10 +172,7 @@ export default function AddHoldingModal() {
   ];
 
   const renderAssetChip = (asset: AssetSearchResult, index: number) => (
-    <Animated.View
-      key={`${asset.type}-${asset.symbol}-${index}`}
-      entering={FadeInDown.delay(index * 30).duration(200)}
-    >
+    <View key={`${asset.type}-${asset.symbol}-${index}`}>
       <Pressable
         onPress={() => handleSelectAsset(asset)}
         style={[
@@ -198,7 +195,7 @@ export default function AddHoldingModal() {
           {asset.name}
         </ThemedText>
       </Pressable>
-    </Animated.View>
+    </View>
   );
 
   const renderSearchResult = ({ item }: { item: AssetSearchResult }) => (

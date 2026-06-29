@@ -542,13 +542,7 @@ export default function ProfileScreen() {
             type="caption"
             style={{ color: theme.textSecondary, textAlign: "center" }}
           >
-            Briefcase v1.0.0
-          </ThemedText>
-          <ThemedText
-            type="caption"
-            style={{ color: theme.textSecondary, textAlign: "center" }}
-          >
-            Built for Gemini Hackathon
+            Briefcase v1.1 (C) 2026 Billionware
           </ThemedText>
         </View>
       </ScrollView>

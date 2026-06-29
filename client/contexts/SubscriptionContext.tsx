@@ -86,6 +86,31 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     return result.isPremium;
   }, [token, isAuthenticated, refreshUser, setPremiumStatus]);
 
+  const resolvePremiumStatus = useCallback(
+    async (options?: { syncServer?: boolean }) => {
+      const customerInfo = await Purchases.getCustomerInfo();
+      const rcPremium =
+        customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] !== undefined;
+
+      let serverPremium: boolean | null = null;
+      if (options?.syncServer !== false && isAuthenticated && token) {
+        serverPremium = await syncPremiumToDatabase();
+      }
+
+      const authPremium = user?.isPremium ?? false;
+      const effectivePremium =
+        rcPremium || serverPremium === true || authPremium;
+
+      setIsPremium(effectivePremium);
+      if (effectivePremium) {
+        setPremiumStatus(true);
+      }
+
+      return effectivePremium;
+    },
+    [isAuthenticated, token, syncPremiumToDatabase, setPremiumStatus, user?.isPremium]
+  );
+
   const syncPremiumWithRetry = useCallback(
     async (expectedPremium: boolean, maxAttempts = 4): Promise<boolean> => {
       const delays = [0, 400, 800, 1200];
@@ -117,6 +142,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   );
 
   useEffect(() => {
+    if (user?.isPremium) {
+      setIsPremium(true);
+    }
+  }, [user?.id, user?.isPremium]);
+
+  useEffect(() => {
     if (Platform.OS === "web") {
       setIsLoading(false);
       return;
@@ -140,7 +171,6 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         });
         
         setIsConfigured(true);
-        await refreshSubscriptionStatus();
         await loadOfferings();
       } catch (error) {
         console.error("Error initializing RevenueCat:", error);
@@ -152,19 +182,30 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, []);
 
   useEffect(() => {
+    if (isConfigured && !isAuthenticated) {
+      setIsLoading(false);
+    }
+  }, [isConfigured, isAuthenticated]);
+
+  useEffect(() => {
     if (!isConfigured || !isAuthenticated || !user) return;
 
     const identifyUser = async () => {
       try {
+        setIsLoading(true);
         await Purchases.logIn(user.id);
-        await refreshSubscriptionStatus();
+        // Re-link App Store receipt after reinstall / new device install
+        await Purchases.restorePurchases();
+        await resolvePremiumStatus();
       } catch (error) {
         console.error("Error identifying user:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     identifyUser();
-  }, [isConfigured, isAuthenticated, user?.id]);
+  }, [isConfigured, isAuthenticated, user?.id, resolvePremiumStatus]);
 
   useEffect(() => {
     if (Platform.OS === "web" || !isConfigured) return;
@@ -183,21 +224,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (Platform.OS === "web" || !isConfigured) return;
 
     try {
-      const customerInfo = await Purchases.getCustomerInfo();
-      const hasPremium =
-        customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] !== undefined;
-      setIsPremium(hasPremium);
-
-      const serverPremium = await syncPremiumToDatabase();
-      if (serverPremium !== null) {
-        setIsPremium(serverPremium);
-      }
+      setIsLoading(true);
+      await resolvePremiumStatus();
     } catch (error) {
       console.error("Error getting customer info:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [isConfigured, syncPremiumToDatabase]);
+  }, [isConfigured, resolvePremiumStatus]);
 
   const loadOfferings = async () => {
     try {
