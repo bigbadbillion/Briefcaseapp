@@ -42,8 +42,10 @@ export default function AuthScreen() {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -117,13 +119,18 @@ export default function AuthScreen() {
   };
 
   const handleReset = async () => {
-    if (!code || !newPassword) {
-      Alert.alert("Error", "Please enter the code and a new password.");
+    if (!code || !newPassword || !confirmNewPassword) {
+      Alert.alert("Error", "Please enter the code and both password fields.");
       return;
     }
 
     if (newPassword.length < 8) {
       Alert.alert("Error", "Password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      Alert.alert("Error", "Passwords do not match. Please re-enter them.");
       return;
     }
 
@@ -138,6 +145,7 @@ export default function AuthScreen() {
       setMode("login");
       setPassword("");
       setNewPassword("");
+      setConfirmNewPassword("");
       setCode("");
       Alert.alert("Password Reset", "You can now sign in with your new password.");
     } else {
@@ -274,7 +282,7 @@ export default function AuthScreen() {
             ) : mode === "reset" ? (
               <>
                 <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg, textAlign: "center" }}>
-                  Enter the 6-digit code sent to your email and choose a new password.
+                  Enter the 6-digit code sent to your email, then enter your new password twice.
                 </ThemedText>
 
                 <View style={styles.inputContainer}>
@@ -323,6 +331,37 @@ export default function AuthScreen() {
                   >
                     <Feather
                       name={showPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color={theme.textSecondary}
+                    />
+                  </Pressable>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Feather name="lock" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                        paddingRight: 50,
+                      },
+                    ]}
+                    placeholder="Re-enter new password"
+                    placeholderTextColor={theme.textSecondary}
+                    value={confirmNewPassword}
+                    onChangeText={setConfirmNewPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                  />
+                  <Pressable
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={styles.passwordToggle}
+                  >
+                    <Feather
+                      name={showConfirmPassword ? "eye-off" : "eye"}
                       size={20}
                       color={theme.textSecondary}
                     />
