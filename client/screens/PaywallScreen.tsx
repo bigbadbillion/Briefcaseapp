@@ -22,12 +22,12 @@ const PREMIUM_FEATURES = [
   {
     icon: "cpu" as const,
     title: "AI-Powered Insights",
-    description: "Get personalized portfolio analysis and recommendations powered by advanced AI",
+    description: "Live portfolio analysis with cited market data from Finnhub, CoinGecko, and web research",
   },
   {
     icon: "message-circle" as const,
-    title: "AI Chat Assistant",
-    description: "Ask questions about your investments and get instant, intelligent answers",
+    title: "AI Research Assistant",
+    description: "Ask about prices, news, holdings, and market sentiment — answers include sources",
   },
   {
     icon: "trending-up" as const,

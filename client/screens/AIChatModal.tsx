@@ -21,8 +21,8 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
-import { useHoldings, calculatePortfolioMetrics, Holding } from "@/hooks/useHoldings";
-import { sendChatMessage, type ChatMessage as APIChatMessage, type PortfolioContext } from "@/lib/aiService";
+import { useAuth } from "@/contexts/AuthContext";
+import { sendChatMessage, type ChatMessage as APIChatMessage, type AgentSource } from "@/lib/aiService";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 interface Message {
@@ -30,16 +30,18 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  sources?: AgentSource[];
+  warnings?: string[];
 }
 
 export default function AIChatModal() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const { isPremium } = useSubscription();
+  const { token } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const flatListRef = useRef<FlatList>(null);
 
-  const { data: holdings = [] } = useHoldings();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -55,29 +57,12 @@ export default function AIChatModal() {
         id: "welcome",
         role: "assistant",
         content:
-          "Hello! I'm your AI portfolio assistant powered by Gemini. I can help you understand your investments, analyze your risk, and provide personalized insights. Try asking me about your diversification, risk level, or recommendations!",
+          "Hello! I'm your Briefcase research assistant. I can look up live stock and crypto prices, recent news, your holdings, and saved notes. Try asking about your portfolio, a ticker, or market sentiment — I'll cite my sources.",
         timestamp: new Date(),
       };
       setMessages([welcomeMessage]);
     }
   }, []);
-
-  const buildPortfolioContext = (): PortfolioContext => {
-    const metrics = calculatePortfolioMetrics(holdings);
-    return {
-      totalValue: metrics.totalValue,
-      riskScore: metrics.riskScore,
-      diversificationScore: metrics.diversificationScore,
-      holdings: holdings.map((h) => ({
-        name: h.name,
-        symbol: h.symbol,
-        type: h.type,
-        value: h.currentPrice * h.quantity,
-        gain: (h.currentPrice - h.purchasePrice) * h.quantity,
-        gainPercent: ((h.currentPrice - h.purchasePrice) / h.purchasePrice) * 100,
-      })),
-    };
-  };
 
   const buildChatHistory = (): APIChatMessage[] => {
     return messages
@@ -91,7 +76,7 @@ export default function AIChatModal() {
   };
 
   const handleSend = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !token) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -110,15 +95,15 @@ export default function AIChatModal() {
 
     try {
       const history = buildChatHistory();
-      const context = buildPortfolioContext();
-      
-      const response = await sendChatMessage(userMessageText, history, context);
+      const response = await sendChatMessage(token, userMessageText, history);
 
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: response.response,
         timestamp: new Date(),
+        sources: response.sources,
+        warnings: response.warnings,
       };
       setMessages((prev) => [aiResponse, ...prev]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -165,6 +150,28 @@ export default function AIChatModal() {
           >
             {item.content}
           </ThemedText>
+          {!isUser && item.warnings && item.warnings.length > 0 ? (
+            <ThemedText
+              type="caption"
+              style={[styles.warningText, { color: theme.warning }]}
+            >
+              {item.warnings.join(" ")}
+            </ThemedText>
+          ) : null}
+          {!isUser && item.sources && item.sources.length > 0 ? (
+            <View style={styles.sourcesRow}>
+              {item.sources.slice(0, 4).map((source, i) => (
+                <View
+                  key={`${source.type}-${source.label}-${i}`}
+                  style={[styles.sourceChip, { backgroundColor: theme.backgroundTertiary }]}
+                >
+                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                    {source.label}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
       </Animated.View>
     );
@@ -203,16 +210,16 @@ export default function AIChatModal() {
         Ask me anything
       </ThemedText>
       <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center" }}>
-        I can help analyze your portfolio, assess risk, and provide insights.
+        Ask about live prices, news, your holdings, or market sentiment.
       </ThemedText>
     </View>
   );
 
   const suggestedQuestions = [
+    "What do I hold?",
+    "What's NVDA trading at?",
+    "Any news on AAPL?",
     "How diversified am I?",
-    "What's my risk level?",
-    "Best performing asset?",
-    "Any recommendations?",
   ];
 
   if (!isPremium) {
@@ -226,7 +233,7 @@ export default function AIChatModal() {
             AI Chat Assistant
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginBottom: Spacing.xl }}>
-            Get instant answers about your portfolio with our AI-powered assistant. Ask about risk, diversification, recommendations, and more.
+            Get live stock and crypto research with cited sources. Ask about prices, news, your holdings, and market sentiment.
           </ThemedText>
           <Button onPress={handleUpgrade} style={styles.premiumButton}>
             Upgrade to Premium
@@ -399,6 +406,21 @@ const styles = StyleSheet.create({
   },
   messageText: {
     lineHeight: 22,
+  },
+  warningText: {
+    marginTop: Spacing.sm,
+    lineHeight: 18,
+  },
+  sourcesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+    marginTop: Spacing.sm,
+  },
+  sourceChip: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
   },
   typingDots: {
     flexDirection: "row",

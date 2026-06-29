@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View, ScrollView, RefreshControl, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -19,7 +19,9 @@ import { SkeletonLoader } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
-import { useHoldings, calculatePortfolioMetrics, Holding } from "@/hooks/useHoldings";
+import { useHoldings, calculatePortfolioMetrics } from "@/hooks/useHoldings";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAIInsights } from "@/lib/aiService";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 const emptyInsightsImage = require("../assets/images/empty-insights.png");
@@ -36,9 +38,13 @@ export default function InsightsScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const { isPremium } = useSubscription();
+  const { token } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const { data: holdings = [], isLoading: loading, refetch, isRefetching } = useHoldings();
+  const [aiInsightsText, setAiInsightsText] = useState<string | null>(null);
+  const [loadingAiInsights, setLoadingAiInsights] = useState(false);
+  const [aiInsightsFailed, setAiInsightsFailed] = useState(false);
 
   const handleUpgrade = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -47,11 +53,43 @@ export default function InsightsScreen() {
 
   const onRefresh = useCallback(async () => {
     await refetch();
-  }, [refetch]);
+    if (isPremium && token && holdings.length > 0) {
+      setLoadingAiInsights(true);
+      const result = await getAIInsights(token);
+      if (result.configured && result.insights) {
+        setAiInsightsText(result.insights);
+        setAiInsightsFailed(false);
+      } else {
+        setAiInsightsFailed(true);
+      }
+      setLoadingAiInsights(false);
+    }
+  }, [refetch, isPremium, token, holdings.length]);
+
+  useEffect(() => {
+    if (!isPremium || !token || holdings.length === 0) return;
+
+    let cancelled = false;
+    setLoadingAiInsights(true);
+    getAIInsights(token).then((result) => {
+      if (cancelled) return;
+      if (result.configured && result.insights) {
+        setAiInsightsText(result.insights);
+        setAiInsightsFailed(false);
+      } else {
+        setAiInsightsFailed(true);
+      }
+      setLoadingAiInsights(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPremium, token, holdings.length]);
 
   const metrics = calculatePortfolioMetrics(holdings);
 
-  const generateInsights = (): Insight[] => {
+  const generateRuleBasedInsights = (): Insight[] => {
     const insights: Insight[] = [];
 
     if (holdings.length === 0) return insights;
@@ -133,7 +171,9 @@ export default function InsightsScreen() {
     return insights;
   };
 
-  const insights = generateInsights();
+  const fallbackInsights = generateRuleBasedInsights();
+  const useFallback = !isPremium || aiInsightsFailed || !aiInsightsText;
+  const insights = useFallback ? fallbackInsights : [];
 
   const getDiversificationBreakdown = () => {
     return Object.entries(metrics.typeAllocation).map(([type, value]) => ({
@@ -300,7 +340,19 @@ export default function InsightsScreen() {
         AI Recommendations
       </ThemedText>
       {isPremium ? (
-        insights.length > 0 ? (
+        loadingAiInsights ? (
+          <Card>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              Generating AI insights with live data...
+            </ThemedText>
+          </Card>
+        ) : !useFallback && aiInsightsText ? (
+          <Card>
+            <ThemedText type="body" style={{ lineHeight: 22 }}>
+              {aiInsightsText}
+            </ThemedText>
+          </Card>
+        ) : insights.length > 0 ? (
           insights.map((insight, index) => (
             <InsightCard
               key={index}
@@ -327,7 +379,7 @@ export default function InsightsScreen() {
               Unlock AI Insights
             </ThemedText>
             <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginBottom: Spacing.lg }}>
-              Get personalized portfolio recommendations powered by advanced AI analysis
+              Get live portfolio insights with cited market data and research tools
             </ThemedText>
             <Button onPress={handleUpgrade} style={styles.upgradeButton}>
               Upgrade to Premium

@@ -3,17 +3,17 @@ import { Platform, AppState, AppStateStatus } from "react-native";
 import * as Application from "expo-application";
 import Constants from "expo-constants";
 import Purchases, { 
-  CustomerInfo, 
   PurchasesOffering, 
   PurchasesPackage,
   LOG_LEVEL 
 } from "react-native-purchases";
 import { useAuth } from "./AuthContext";
+import { REVENUECAT_ENTITLEMENT_ID } from "@shared/subscription";
+import { syncSubscriptionWithServer } from "@/lib/subscriptionService";
 
 // Read API keys from app.config.js extra field (more reliable for builds)
 const REVENUECAT_API_KEY = Constants.expoConfig?.extra?.revenueCatApiKey || "";
 const REVENUECAT_TEST_API_KEY = Constants.expoConfig?.extra?.revenueCatTestApiKey || "";
-const ENTITLEMENT_ID = "Briefcase Pro";
 
 // Debug: Log what we got from config
 console.log("[RevenueCat] CONFIG CHECK - Production key exists:", !!REVENUECAT_API_KEY, "length:", REVENUECAT_API_KEY.length);
@@ -56,11 +56,30 @@ interface SubscriptionContextType {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, token, refreshUser } = useAuth();
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
+
+  const syncPremiumToDatabase = useCallback(async (): Promise<boolean | null> => {
+    if (!token || !isAuthenticated) {
+      return null;
+    }
+
+    const result = await syncSubscriptionWithServer(token);
+    if (!result.success) {
+      console.warn("[RevenueCat] Server premium sync failed:", result.error);
+      return null;
+    }
+
+    if (result.updated) {
+      console.log("[RevenueCat] Synced is_premium to database:", result.isPremium);
+    }
+
+    await refreshUser();
+    return result.isPremium;
+  }, [token, isAuthenticated, refreshUser]);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -130,14 +149,20 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     try {
       const customerInfo = await Purchases.getCustomerInfo();
-      const hasPremium = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      const hasPremium =
+        customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] !== undefined;
       setIsPremium(hasPremium);
+
+      const serverPremium = await syncPremiumToDatabase();
+      if (serverPremium !== null) {
+        setIsPremium(serverPremium);
+      }
     } catch (error) {
       console.error("Error getting customer info:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [isConfigured]);
+  }, [isConfigured, syncPremiumToDatabase]);
 
   const loadOfferings = async () => {
     try {
@@ -186,18 +211,21 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       console.log("[RevenueCat] Purchase completed, checking entitlements");
       console.log("[RevenueCat] Active entitlements:", Object.keys(customerInfo.entitlements.active));
       
-      const hasPremium = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      const hasPremium =
+        customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] !== undefined;
       console.log("[RevenueCat] Has premium entitlement:", hasPremium);
       
       setIsPremium(hasPremium);
       
-      // If purchase completed but entitlement not immediately active, 
-      // still treat as success (RevenueCat may have slight delay)
       if (!hasPremium) {
         console.log("[RevenueCat] Entitlement not immediately active, refreshing status...");
-        // Small delay then refresh to catch any backend propagation delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         await refreshSubscriptionStatus();
+      } else {
+        const serverPremium = await syncPremiumToDatabase();
+        if (serverPremium !== null) {
+          setIsPremium(serverPremium);
+        }
       }
       
       return { success: true };
@@ -218,14 +246,20 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     try {
       const customerInfo = await Purchases.restorePurchases();
-      const hasPremium = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      const hasPremium =
+        customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] !== undefined;
       setIsPremium(hasPremium);
-      
-      if (hasPremium) {
-        return { success: true };
-      } else {
-        return { success: false, error: "No active subscription found" };
+
+      const serverPremium = await syncPremiumToDatabase();
+      if (serverPremium !== null) {
+        setIsPremium(serverPremium);
       }
+      
+      if (hasPremium || serverPremium) {
+        return { success: true };
+      }
+
+      return { success: false, error: "No active subscription found" };
     } catch (error: any) {
       console.error("Restore error:", error);
       return { success: false, error: error.message || "Restore failed" };

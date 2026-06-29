@@ -12,7 +12,6 @@ import {
   explainAsset,
   isGeminiConfigured,
   type ChatMessage,
-  type PortfolioContext,
 } from "./services/geminiService";
 import {
   searchAssets,
@@ -31,7 +30,10 @@ import {
   authenticateWithApple,
 } from "./services/authService";
 import { storage } from "./storage";
-import { authLimiter } from "./middleware/rateLimit";
+import { authLimiter, aiChatLimiter } from "./middleware/rateLimit";
+import { premiumMiddleware } from "./middleware/premium";
+import { syncUserPremiumFromRevenueCat } from "./services/subscriptionService";
+import { verifyWebhookAuthorization } from "./services/revenueCatService";
 import {
   registerSchema,
   loginSchema,
@@ -561,16 +563,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
         coingecko: true,
         finnhub: !!process.env.FINNHUB_API_KEY,
         gemini: !!process.env.GEMINI_API_KEY,
+        revenuecat: !!process.env.REVENUECAT_SECRET_API_KEY,
+        tavily: !!process.env.TAVILY_API_KEY,
       }
     });
   });
 
-  app.post("/api/ai/chat", async (req, res) => {
+  app.post(
+    "/api/webhooks/revenuecat",
+    async (req, res) => {
+      try {
+        if (!process.env.REVENUECAT_WEBHOOK_AUTHORIZATION) {
+          console.error(
+            "[RevenueCat webhook] REVENUECAT_WEBHOOK_AUTHORIZATION not configured"
+          );
+          return res.status(503).json({ error: "Webhook not configured" });
+        }
+
+        const authHeader = req.headers.authorization;
+        if (!verifyWebhookAuthorization(authHeader)) {
+          return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        const event = req.body?.event;
+        const appUserId = event?.app_user_id as string | undefined;
+
+        if (!appUserId) {
+          return res.status(400).json({ error: "Missing app_user_id" });
+        }
+
+        const result = await syncUserPremiumFromRevenueCat(appUserId);
+
+        console.info(
+          JSON.stringify({
+            event: "revenuecat_webhook",
+            type: event?.type,
+            appUserId,
+            isPremium: result.isPremium,
+            updated: result.updated,
+            notFound: result.notFound,
+          })
+        );
+
+        res.json({ received: true, ...result });
+      } catch (error) {
+        console.error("Error in /api/webhooks/revenuecat:", error);
+        res.status(500).json({ error: "Webhook processing failed" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/subscription/sync",
+    authMiddleware as any,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const result = await syncUserPremiumFromRevenueCat(req.user!.id);
+
+        if (result.notFound) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json({
+          success: true,
+          isPremium: result.isPremium,
+          updated: result.updated,
+          skipped: result.skipped ?? false,
+        });
+      } catch (error) {
+        console.error("Error in /api/subscription/sync:", error);
+        res.status(500).json({ error: "Failed to sync subscription status" });
+      }
+    }
+  );
+
+  app.post("/api/ai/chat", authMiddleware as any, premiumMiddleware, aiChatLimiter, async (req: AuthenticatedRequest, res) => {
     try {
-      const { message, history, portfolioContext } = req.body as {
+      const { message, history } = req.body as {
         message: string;
         history?: ChatMessage[];
-        portfolioContext?: PortfolioContext;
       };
 
       if (!message) {
@@ -580,59 +651,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isGeminiConfigured()) {
         return res.json({
           response: "AI features are not available. Please configure your Gemini API key.",
+          sources: [],
+          warnings: [],
           configured: false,
         });
       }
 
-      const response = await chat(message, history || [], portfolioContext);
-      res.json({ response, configured: true });
+      const result = await chat(message, history || [], req.user!.id);
+      res.json({
+        response: result.text,
+        sources: result.sources,
+        warnings: result.warnings,
+        toolSteps: result.toolSteps,
+        configured: result.configured,
+      });
     } catch (error) {
       console.error("Error in /api/ai/chat:", error);
       res.status(500).json({ error: "Failed to generate response" });
     }
   });
 
-  app.post("/api/ai/insights", async (req, res) => {
+  app.post("/api/ai/insights", authMiddleware as any, premiumMiddleware, aiChatLimiter, async (req: AuthenticatedRequest, res) => {
     try {
-      const { portfolioContext } = req.body as { portfolioContext: PortfolioContext };
-
-      if (!portfolioContext) {
-        return res.status(400).json({ error: "portfolioContext is required" });
-      }
-
       if (!isGeminiConfigured()) {
         return res.json({
           insights: "AI insights are not available. Please configure your Gemini API key.",
+          sources: [],
+          warnings: [],
           configured: false,
         });
       }
 
-      const insights = await generatePortfolioInsights(portfolioContext);
-      res.json({ insights, configured: true });
+      const result = await generatePortfolioInsights(req.user!.id);
+      res.json({
+        insights: result.text,
+        sources: result.sources,
+        warnings: result.warnings,
+        configured: result.configured,
+      });
     } catch (error) {
       console.error("Error in /api/ai/insights:", error);
       res.status(500).json({ error: "Failed to generate insights" });
     }
   });
 
-  app.get("/api/ai/explain/:symbol", async (req, res) => {
+  app.get("/api/ai/explain/:symbol", authMiddleware as any, premiumMiddleware, async (req: AuthenticatedRequest, res) => {
     try {
-      const { symbol } = req.params;
+      const { symbol: symbolParam } = req.params;
+      const symbol = Array.isArray(symbolParam) ? symbolParam[0] : symbolParam;
       const { name, type } = req.query as { name?: string; type?: string };
 
       if (!isGeminiConfigured()) {
         return res.json({
           explanation: "AI explanations are not available. Please configure your Gemini API key.",
+          sources: [],
+          warnings: [],
           configured: false,
         });
       }
 
-      const explanation = await explainAsset(
+      const result = await explainAsset(
         symbol,
         name || symbol,
-        type || "investment"
+        type || "investment",
+        req.user!.id
       );
-      res.json({ explanation, configured: true });
+      res.json({
+        explanation: result.text,
+        sources: result.sources,
+        warnings: result.warnings,
+        configured: result.configured,
+      });
     } catch (error) {
       console.error("Error in /api/ai/explain:", error);
       res.status(500).json({ error: "Failed to generate explanation" });

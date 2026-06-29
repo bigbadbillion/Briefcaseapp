@@ -55,6 +55,7 @@ export default function AddHoldingModal() {
   const [quantity, setQuantity] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [currentPrice, setCurrentPrice] = useState("");
+  const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
   const [fetchingPrice, setFetchingPrice] = useState(false);
@@ -146,6 +147,7 @@ export default function AddHoldingModal() {
         purchasePrice: parseFloat(purchasePrice),
         purchaseDate: new Date().toISOString().split("T")[0],
         imageUrl: selectedAsset.imageUrl,
+        notes: notes.trim() || undefined,
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -480,6 +482,21 @@ export default function AddHoldingModal() {
                 />
               </View>
             ) : null}
+
+            <View style={styles.inputGroup}>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                Research Notes (optional)
+              </ThemedText>
+              <TextInput
+                style={[inputStyle, styles.notesInput]}
+                placeholder="Thesis, reminders, or research links..."
+                placeholderTextColor={theme.textSecondary}
+                value={notes}
+                onChangeText={setNotes}
+                multiline
+                maxLength={1000}
+              />
+            </View>
           </Card>
         </Animated.View>
       ) : null}
@@ -686,6 +703,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: Spacing.sm,
+  },
+  notesInput: {
+    minHeight: 80,
+    textAlignVertical: "top",
+    paddingTop: Spacing.md,
   },
   buttonContainer: {
     flexDirection: "row",

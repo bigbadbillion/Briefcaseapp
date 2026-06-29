@@ -23,3 +23,14 @@ export const apiLimiter = rateLimit({
     res.status(options.statusCode).json(options.message);
   },
 });
+
+export const aiChatLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "AI chat rate limit reached. Please try again later." },
+  handler: (_req, res, _next, options) => {
+    res.status(options.statusCode).json(options.message);
+  },
+});
