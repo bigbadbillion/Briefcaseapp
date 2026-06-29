@@ -41,6 +41,7 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (name: string) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
+  setPremiumStatus: (isPremium: boolean) => void;
   deleteAccount: () => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -320,6 +321,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await refreshUserData();
   }, [token]);
 
+  const setPremiumStatus = useCallback((isPremium: boolean) => {
+    setUser((current) => {
+      if (!current) return current;
+      const updated = { ...current, isPremium };
+      AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
+  }, []);
+
   const deleteAccount = useCallback(async () => {
     if (!token) {
       return { success: false, error: "Not authenticated" };
@@ -364,6 +374,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resetPassword,
     updateProfile,
     refreshUser,
+    setPremiumStatus,
     deleteAccount,
   };
 

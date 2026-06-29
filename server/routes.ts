@@ -624,11 +624,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: "User not found" });
         }
 
+        const user = await storage.getUser(req.user!.id);
+
         res.json({
           success: true,
           isPremium: result.isPremium,
           updated: result.updated,
           skipped: result.skipped ?? false,
+          user: user
+            ? {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                emailVerified: user.emailVerified,
+                isPremium: user.isPremium,
+              }
+            : undefined,
         });
       } catch (error) {
         console.error("Error in /api/subscription/sync:", error);

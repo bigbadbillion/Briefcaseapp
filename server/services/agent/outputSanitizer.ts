@@ -1,10 +1,19 @@
 import type { AgentSource, SessionToolData } from "./types";
 
-const IMPERATIVE_PATTERNS = [
-  /\byou should (buy|sell|purchase)\b/i,
+const HYPE_PATTERNS = [
   /\bguaranteed\b/i,
   /\brisk[- ]free\b/i,
-  /\bbest move\b/i,
+  /\bcan'?t lose\b/i,
+  /\bno[- ]brainer\b/i,
+];
+
+const DISCLAIMER_PATTERNS = [
+  /\n*---+\n*[\s\S]*$/i,
+  /\n*\*{0,2}Note:\*{0,2}[\s\S]*$/i,
+  /\n*(This is for educational purposes only[^\n]*)/gi,
+  /\n*(not financial advice[^\n]*)/gi,
+  /\n*(Please consult a qualified financial advisor[^\n]*)/gi,
+  /\n*(verify independently before acting[^\n]*)/gi,
 ];
 
 export interface SanitizeResult {
@@ -12,17 +21,34 @@ export interface SanitizeResult {
   warnings: string[];
 }
 
+export function formatAgentText(text: string): string {
+  let result = text;
+
+  for (const pattern of DISCLAIMER_PATTERNS) {
+    result = result.replace(pattern, "");
+  }
+
+  result = result.replace(/^#{1,6}\s+/gm, "");
+  result = result.replace(/\*\*([^*]+)\*\*/g, "$1");
+  result = result.replace(/__([^_]+)__/g, "$1");
+  result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "$1");
+  result = result.replace(/^---+$/gm, "");
+  result = result.replace(/\n{3,}/g, "\n\n");
+
+  return result.trim();
+}
+
 export function sanitizeAgentOutput(
   text: string,
   sessionData: SessionToolData | undefined
 ): SanitizeResult {
   const warnings: string[] = [];
-  let result = text;
+  let result = formatAgentText(text);
 
-  for (const pattern of IMPERATIVE_PATTERNS) {
+  for (const pattern of HYPE_PATTERNS) {
     if (pattern.test(result)) {
       warnings.push(
-        "Response contains strong recommendation language. Verify independently before acting."
+        "This response uses strong hype language — treat it as a starting point for your own research."
       );
       break;
     }
@@ -34,7 +60,7 @@ export function sanitizeAgentOutput(
       const symbol = sellMatch[1].toUpperCase();
       if (!sessionData.holdingsSymbols.includes(symbol)) {
         warnings.push(
-          `Response mentions selling ${symbol}, which is not in your verified holdings.`
+          `This mentions ${symbol}, which is not in your verified holdings.`
         );
       }
     }
@@ -53,18 +79,12 @@ export function sanitizeAgentOutput(
           const deviation = Math.abs(cited - knownPrice) / knownPrice;
           if (deviation > 0.1) {
             warnings.push(
-              `Cited price for ${symbol} may be inconsistent with fetched data ($${knownPrice.toFixed(2)}).`
+              `Price cited for ${symbol} may not match fetched data ($${knownPrice.toFixed(2)}).`
             );
           }
         }
       }
     }
-  }
-
-  if (warnings.length > 0) {
-    const banner =
-      "\n\n---\n**Note:** " + warnings.join(" ") + "\n---";
-    result = result + banner;
   }
 
   return { text: result, warnings };

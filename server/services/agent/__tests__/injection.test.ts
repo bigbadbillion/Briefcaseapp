@@ -32,13 +32,23 @@ describe("delimiter injection defense", () => {
 });
 
 describe("output sanitizer", () => {
-  it("flags imperative recommendation language", () => {
+  it("strips markdown headers and disclaimers", () => {
     const result = sanitizeAgentOutput(
-      "You should buy XYZ immediately. This is guaranteed.",
+      "### Portfolio Balance\n\n**Gold** is heavy.\n\n---\nThis is for educational purposes only.",
+      undefined
+    );
+    assert.doesNotMatch(result.text, /###/);
+    assert.doesNotMatch(result.text, /\*\*/);
+    assert.doesNotMatch(result.text, /educational purposes/i);
+    assert.match(result.text, /Portfolio Balance/);
+  });
+
+  it("flags hype language like guaranteed returns", () => {
+    const result = sanitizeAgentOutput(
+      "This is a guaranteed win. Buy more now.",
       undefined
     );
     assert.ok(result.warnings.length > 0);
-    assert.match(result.text, /Note:/);
   });
 
   it("flags sell recommendation for symbol not in holdings", () => {

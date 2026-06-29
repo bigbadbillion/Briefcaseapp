@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { StyleSheet, View, ScrollView, RefreshControl, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
@@ -51,41 +51,30 @@ export default function InsightsScreen() {
     navigation.navigate("Paywall");
   };
 
-  const onRefresh = useCallback(async () => {
-    await refetch();
-    if (isPremium && token && holdings.length > 0) {
-      setLoadingAiInsights(true);
-      const result = await getAIInsights(token);
-      if (result.configured && result.insights) {
-        setAiInsightsText(result.insights);
-        setAiInsightsFailed(false);
-      } else {
-        setAiInsightsFailed(true);
-      }
-      setLoadingAiInsights(false);
-    }
-  }, [refetch, isPremium, token, holdings.length]);
-
-  useEffect(() => {
+  const fetchAiInsights = useCallback(async () => {
     if (!isPremium || !token || holdings.length === 0) return;
 
-    let cancelled = false;
     setLoadingAiInsights(true);
-    getAIInsights(token).then((result) => {
-      if (cancelled) return;
-      if (result.configured && result.insights) {
-        setAiInsightsText(result.insights);
-        setAiInsightsFailed(false);
-      } else {
-        setAiInsightsFailed(true);
-      }
-      setLoadingAiInsights(false);
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    const result = await getAIInsights(token);
+    if (result.configured && result.insights) {
+      setAiInsightsText(result.insights);
+      setAiInsightsFailed(false);
+    } else {
+      setAiInsightsFailed(true);
+    }
+    setLoadingAiInsights(false);
   }, [isPremium, token, holdings.length]);
+
+  const onRefresh = useCallback(async () => {
+    await refetch();
+    await fetchAiInsights();
+  }, [refetch, fetchAiInsights]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchAiInsights();
+    }, [fetchAiInsights])
+  );
 
   const metrics = calculatePortfolioMetrics(holdings);
 

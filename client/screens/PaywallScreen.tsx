@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { StyleSheet, View, ScrollView, Pressable, Alert, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
@@ -43,7 +45,7 @@ const PREMIUM_FEATURES = [
 
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme } = useTheme();
   const { offering, purchasePackage, restorePurchases, isLoading } = useSubscription();
   const [isPurchasing, setIsPurchasing] = useState(false);
@@ -81,6 +83,14 @@ export default function PaywallScreen() {
   } : "NONE - subscription not ready");
   console.log("[Paywall] === END DEBUG ===");
 
+  const handleDismiss = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate("Main");
+    }
+  };
+
   const handlePurchase = async () => {
     console.log("[Paywall] Purchase button pressed");
     console.log("[Paywall] monthlyPackage exists:", !!monthlyPackage);
@@ -102,15 +112,10 @@ export default function PaywallScreen() {
       const result = await purchasePackage(monthlyPackage);
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert(
-          "Welcome to Premium!", 
-          "Your subscription is now active. Enjoy AI-powered insights!",
-          [{ text: "Let's Go", onPress: () => navigation.goBack() }]
-        );
+        navigation.replace("WelcomePremium");
       } else if (result.error) {
         Alert.alert("Purchase Failed", result.error);
       }
-      // If result.success is false but no error, user likely cancelled - do nothing
     } catch (error) {
       Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
@@ -126,9 +131,7 @@ export default function PaywallScreen() {
       const result = await restorePurchases();
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Success", "Your subscription has been restored!", [
-          { text: "OK", onPress: () => navigation.goBack() }
-        ]);
+        navigation.replace("WelcomePremium");
       } else if (result.error) {
         Alert.alert("No Subscription Found", result.error);
       }
@@ -290,7 +293,8 @@ export default function PaywallScreen() {
       </ScrollView>
 
       <Pressable
-        onPress={() => navigation.goBack()}
+        onPress={handleDismiss}
+        hitSlop={12}
         style={[styles.closeButton, { top: insets.top + Spacing.md }]}
       >
         <View style={[styles.closeButtonBg, { backgroundColor: theme.backgroundSecondary }]}>

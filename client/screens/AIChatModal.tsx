@@ -57,7 +57,7 @@ export default function AIChatModal() {
         id: "welcome",
         role: "assistant",
         content:
-          "Hello! I'm your Briefcase research assistant. I can look up live stock and crypto prices, recent news, your holdings, and saved notes. Try asking about your portfolio, a ticker, or market sentiment — I'll cite my sources.",
+          "Hi! I'm your Briefcase research copilot — I can check live prices, news, your holdings, and saved notes, then suggest where to dig deeper.\n\nI'm not a licensed financial advisor. What I share is a research starting point — always verify before you act.\n\nTry: \"What do I hold?\" or \"Any news on NVDA?\"",
         timestamp: new Date(),
       };
       setMessages([welcomeMessage]);

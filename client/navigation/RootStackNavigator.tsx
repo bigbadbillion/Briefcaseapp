@@ -7,6 +7,7 @@ import AIChatModal from "@/screens/AIChatModal";
 import AssetDetailScreen from "@/screens/AssetDetailScreen";
 import AuthScreen from "@/screens/AuthScreen";
 import PaywallScreen from "@/screens/PaywallScreen";
+import WelcomePremiumScreen from "@/screens/WelcomePremiumScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
@@ -18,6 +19,7 @@ export type RootStackParamList = {
   AIChatModal: undefined;
   AssetDetail: { id: string };
   Paywall: undefined;
+  WelcomePremium: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -76,6 +78,15 @@ export default function RootStackNavigator() {
             options={{
               presentation: "modal",
               headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="WelcomePremium"
+            component={WelcomePremiumScreen}
+            options={{
+              presentation: "modal",
+              headerShown: false,
+              gestureEnabled: false,
             }}
           />
         </>

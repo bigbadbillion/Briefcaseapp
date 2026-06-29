@@ -15,6 +15,7 @@ import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { useTheme } from "@/hooks/useTheme";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { HeaderTitle } from "@/components/HeaderTitle";
+import { AIChatHeaderButton } from "@/components/AIChatHeaderButton";
 import { IconButton } from "@/components/IconButton";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -106,10 +107,8 @@ export default function MainTabNavigator() {
               <Feather name="cpu" size={size} color={color} />
             ),
             headerRight: () => (
-              <IconButton
-                name="message-circle"
+              <AIChatHeaderButton
                 onPress={() => navigation.navigate("AIChatModal")}
-                style={{ marginRight: 8 }}
               />
             ),
           }}

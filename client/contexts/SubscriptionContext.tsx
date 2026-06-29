@@ -56,7 +56,7 @@ interface SubscriptionContextType {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, token, refreshUser } = useAuth();
+  const { user, isAuthenticated, token, refreshUser, setPremiumStatus } = useAuth();
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
@@ -77,9 +77,44 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       console.log("[RevenueCat] Synced is_premium to database:", result.isPremium);
     }
 
-    await refreshUser();
+    if (result.user) {
+      setPremiumStatus(result.user.isPremium);
+    } else {
+      await refreshUser();
+    }
+
     return result.isPremium;
-  }, [token, isAuthenticated, refreshUser]);
+  }, [token, isAuthenticated, refreshUser, setPremiumStatus]);
+
+  const syncPremiumWithRetry = useCallback(
+    async (expectedPremium: boolean, maxAttempts = 4): Promise<boolean> => {
+      const delays = [0, 400, 800, 1200];
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (delays[attempt] > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+        }
+
+        const serverPremium = await syncPremiumToDatabase();
+        if (serverPremium === expectedPremium) {
+          return serverPremium;
+        }
+      }
+
+      return expectedPremium;
+    },
+    [syncPremiumToDatabase]
+  );
+
+  const applyPremiumStatus = useCallback(
+    (hasPremium: boolean) => {
+      setIsPremium(hasPremium);
+      if (hasPremium) {
+        setPremiumStatus(true);
+      }
+    },
+    [setPremiumStatus]
+  );
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -211,24 +246,25 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       console.log("[RevenueCat] Purchase completed, checking entitlements");
       console.log("[RevenueCat] Active entitlements:", Object.keys(customerInfo.entitlements.active));
       
-      const hasPremium =
+      let hasPremium =
         customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] !== undefined;
       console.log("[RevenueCat] Has premium entitlement:", hasPremium);
-      
-      setIsPremium(hasPremium);
-      
+
       if (!hasPremium) {
-        console.log("[RevenueCat] Entitlement not immediately active, refreshing status...");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await refreshSubscriptionStatus();
-      } else {
-        const serverPremium = await syncPremiumToDatabase();
-        if (serverPremium !== null) {
-          setIsPremium(serverPremium);
-        }
+        const refreshed = await Purchases.getCustomerInfo();
+        hasPremium =
+          refreshed.entitlements.active[REVENUECAT_ENTITLEMENT_ID] !== undefined;
+        console.log("[RevenueCat] Re-checked premium entitlement:", hasPremium);
       }
-      
-      return { success: true };
+
+      if (hasPremium) {
+        applyPremiumStatus(true);
+        void syncPremiumWithRetry(true);
+        return { success: true };
+      }
+
+      console.log("[RevenueCat] Entitlement not active after purchase");
+      return { success: false, error: "Subscription could not be activated. Please try Restore Purchases." };
     } catch (error: any) {
       if (error.userCancelled) {
         console.log("[RevenueCat] User cancelled purchase");
@@ -248,14 +284,16 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       const customerInfo = await Purchases.restorePurchases();
       const hasPremium =
         customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] !== undefined;
-      setIsPremium(hasPremium);
+
+      if (hasPremium) {
+        applyPremiumStatus(true);
+        void syncPremiumWithRetry(true);
+        return { success: true };
+      }
 
       const serverPremium = await syncPremiumToDatabase();
-      if (serverPremium !== null) {
-        setIsPremium(serverPremium);
-      }
-      
-      if (hasPremium || serverPremium) {
+      if (serverPremium) {
+        applyPremiumStatus(true);
         return { success: true };
       }
 

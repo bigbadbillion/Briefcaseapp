@@ -6,6 +6,13 @@ export interface SubscriptionSyncResponse {
   updated: boolean;
   skipped?: boolean;
   error?: string;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+    emailVerified: boolean;
+    isPremium: boolean;
+  };
 }
 
 export async function syncSubscriptionWithServer(
@@ -39,6 +46,7 @@ export async function syncSubscriptionWithServer(
       isPremium: !!data.isPremium,
       updated: !!data.updated,
       skipped: data.skipped,
+      user: data.user,
     };
   } catch (error) {
     console.error("[Subscription] Server sync error:", error);
