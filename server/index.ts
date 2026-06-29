@@ -2,11 +2,16 @@ import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { getPublicBaseUrl } from "@shared/publicUrl";
 import { registerRoutes } from "./routes";
+import { apiLimiter } from "./middleware/rateLimit";
 import * as fs from "fs";
 import * as path from "path";
 
 const app = express();
 const log = console.log;
+
+// Behind the Replit/Supabase proxy, trust the first proxy hop so that
+// express-rate-limit sees the real client IP instead of the proxy IP.
+app.set("trust proxy", 1);
 
 declare module "http" {
   interface IncomingMessage {
@@ -278,6 +283,8 @@ function setupErrorHandler(app: express.Application) {
   setupCors(app);
   setupBodyParsing(app);
   setupRequestLogging(app);
+
+  app.use("/api", apiLimiter);
 
   const server = await registerRoutes(app);
 

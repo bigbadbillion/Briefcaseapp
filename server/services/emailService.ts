@@ -136,6 +136,105 @@ If you didn't create an account, you can safely ignore this email.
   }
 }
 
+export async function sendPasswordResetEmail(
+  to: string,
+  name: string,
+  code: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.warn('Resend not configured - password reset email not sent. Please add RESEND_API_KEY to secrets.');
+    return { success: false, error: 'Email service not configured' };
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${APP_NAME} <${FROM_EMAIL}>`,
+      to: [to],
+      subject: `Reset your ${APP_NAME} password`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Reset your password</title>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #0A0A0B; font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0A0A0B;">
+            <tr>
+              <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="100%" style="max-width: 480px; background-color: #141416; border-radius: 12px; border: 1px solid #262629;">
+                  <tr>
+                    <td style="padding: 40px;">
+                      <div style="text-align: center; margin-bottom: 32px;">
+                        <div style="display: inline-block; width: 56px; height: 56px; background-color: #C9A962; border-radius: 12px; line-height: 56px; font-size: 24px;">
+                          <span style="color: #0A0A0B;">B</span>
+                        </div>
+                      </div>
+
+                      <h1 style="color: #FAFAFA; font-size: 24px; font-weight: 600; margin: 0 0 16px 0; text-align: center;">
+                        Reset your password
+                      </h1>
+
+                      <p style="color: #A1A1A6; font-size: 16px; line-height: 24px; margin: 0 0 24px 0; text-align: center;">
+                        Hi ${name || 'there'},<br><br>
+                        We received a request to reset your ${APP_NAME} password. Enter the code below in the app to choose a new password.
+                      </p>
+
+                      <p style="color: #A1A1A6; font-size: 14px; line-height: 20px; margin: 0 0 16px 0; text-align: center;">
+                        Your password reset code:
+                      </p>
+
+                      <div style="background-color: #1C1C1E; border: 1px solid #262629; border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 24px;">
+                        <code style="color: #C9A962; font-size: 28px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 6px;">
+                          ${code}
+                        </code>
+                      </div>
+
+                      <p style="color: #6B6B70; font-size: 12px; line-height: 18px; margin: 0; text-align: center;">
+                        This code expires in 15 minutes. If you didn't request a password reset, you can safely ignore this email.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="color: #6B6B70; font-size: 12px; margin-top: 24px; text-align: center;">
+                  ${APP_NAME} - AI-Powered Investment Dashboard
+                </p>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `,
+      text: `
+Hi ${name || 'there'},
+
+We received a request to reset your ${APP_NAME} password.
+
+Your password reset code: ${code}
+
+Enter this code in the app to choose a new password. This code expires in 15 minutes.
+
+If you didn't request a password reset, you can safely ignore this email.
+
+- The ${APP_NAME} Team
+      `.trim(),
+    });
+
+    if (error) {
+      console.error('[EMAIL] Password reset Resend API error:', JSON.stringify(error, null, 2));
+      return { success: false, error: error.message || 'Email send failed' };
+    }
+
+    console.log(`[EMAIL] Password reset email sent successfully to: ${to}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[EMAIL] Password reset email exception:', error?.message || error);
+    return { success: false, error: error?.message || 'Failed to send password reset email' };
+  }
+}
+
 export async function sendWelcomeEmail(
   to: string,
   name: string

@@ -23,13 +23,22 @@ import {
   login,
   verifyEmail,
   resendVerification,
+  requestPasswordReset,
+  resetPassword,
   validateSession,
   logout,
   getUserFromToken,
   authenticateWithApple,
 } from "./services/authService";
 import { storage } from "./storage";
-import { registerSchema, loginSchema, holdingSchema } from "@shared/schema";
+import { authLimiter } from "./middleware/rateLimit";
+import {
+  registerSchema,
+  loginSchema,
+  holdingSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "@shared/schema";
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -68,7 +77,7 @@ async function authMiddleware(
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", authLimiter, async (req, res) => {
     try {
       const parsed = registerSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -96,7 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", authLimiter, async (req, res) => {
     try {
       const parsed = loginSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -126,7 +135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/apple", async (req, res) => {
+  app.post("/api/auth/apple", authLimiter, async (req, res) => {
     try {
       const { identityToken, email, fullName, user } = req.body;
 
@@ -177,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/resend-verification", async (req, res) => {
+  app.post("/api/auth/resend-verification", authLimiter, async (req, res) => {
     try {
       const { email } = req.body;
       if (!email) {
@@ -194,6 +203,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in /api/auth/resend-verification:", error);
       res.status(500).json({ error: "Failed to resend verification" });
+    }
+  });
+
+  app.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
+    try {
+      const parsed = forgotPasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: parsed.error.errors[0]?.message || "Invalid input",
+        });
+      }
+
+      await requestPasswordReset(parsed.data.email);
+
+      // Generic response regardless of whether the email exists.
+      res.json({
+        success: true,
+        message:
+          "If an account exists with this email, a password reset code has been sent.",
+      });
+    } catch (error) {
+      console.error("Error in /api/auth/forgot-password:", error);
+      res.status(500).json({ error: "Failed to process password reset" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
+    try {
+      const parsed = resetPasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: parsed.error.errors[0]?.message || "Invalid input",
+        });
+      }
+
+      const { email, code, newPassword } = parsed.data;
+      const result = await resetPassword(email, code, newPassword);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json({
+        success: true,
+        message: "Password reset successfully. Please sign in with your new password.",
+      });
+    } catch (error) {
+      console.error("Error in /api/auth/reset-password:", error);
+      res.status(500).json({ error: "Failed to reset password" });
     }
   });
 

@@ -24,12 +24,12 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius, Fonts } from "@/constants/theme";
 
-type AuthMode = "login" | "register" | "verify";
+type AuthMode = "login" | "register" | "verify" | "forgot" | "reset";
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { signIn, signUp, signInWithApple } = useAuth();
+  const { signIn, signUp, signInWithApple, requestPasswordReset, resetPassword } = useAuth();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
 
   React.useEffect(() => {
@@ -40,6 +40,8 @@ export default function AuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -87,6 +89,59 @@ export default function AuthScreen() {
       );
     } else {
       Alert.alert("Registration Failed", result.error || "Please try again.");
+    }
+  };
+
+  const handleForgot = async () => {
+    if (!email) {
+      Alert.alert("Error", "Please enter your email address.");
+      return;
+    }
+
+    setLoading(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const result = await requestPasswordReset(email);
+
+    setLoading(false);
+
+    if (result.success) {
+      setMode("reset");
+      Alert.alert(
+        "Check Your Email",
+        "If an account exists for this email, we've sent a 6-digit reset code. It expires in 15 minutes."
+      );
+    } else {
+      Alert.alert("Error", result.error || "Please try again.");
+    }
+  };
+
+  const handleReset = async () => {
+    if (!code || !newPassword) {
+      Alert.alert("Error", "Please enter the code and a new password.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters.");
+      return;
+    }
+
+    setLoading(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const result = await resetPassword(email, code.trim(), newPassword);
+
+    setLoading(false);
+
+    if (result.success) {
+      setMode("login");
+      setPassword("");
+      setNewPassword("");
+      setCode("");
+      Alert.alert("Password Reset", "You can now sign in with your new password.");
+    } else {
+      Alert.alert("Reset Failed", result.error || "Please try again.");
     }
   };
 
@@ -168,10 +223,123 @@ export default function AuthScreen() {
         <Animated.View entering={FadeInDown.delay(200).duration(400)}>
           <Card style={styles.authCard}>
             <ThemedText type="h2" style={styles.cardTitle}>
-              {mode === "login" ? "Welcome Back" : mode === "register" ? "Create Account" : "Verify Email"}
+              {mode === "login"
+                ? "Welcome Back"
+                : mode === "register"
+                ? "Create Account"
+                : mode === "verify"
+                ? "Verify Email"
+                : mode === "forgot"
+                ? "Reset Password"
+                : "New Password"}
             </ThemedText>
 
-            {mode === "verify" ? (
+            {mode === "forgot" ? (
+              <>
+                <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg, textAlign: "center" }}>
+                  Enter your email and we'll send you a 6-digit code to reset your password.
+                </ThemedText>
+
+                <View style={styles.inputContainer}>
+                  <Feather name="mail" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                    placeholder="Email address"
+                    placeholderTextColor={theme.textSecondary}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+
+                <Button onPress={handleForgot} disabled={loading} style={styles.button}>
+                  {loading ? "Please wait..." : "Send Reset Code"}
+                </Button>
+
+                <Pressable onPress={() => switchMode("login")} style={styles.switchMode}>
+                  <ThemedText type="body" style={{ color: theme.primary }}>
+                    Back to Login
+                  </ThemedText>
+                </Pressable>
+              </>
+            ) : mode === "reset" ? (
+              <>
+                <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg, textAlign: "center" }}>
+                  Enter the 6-digit code sent to your email and choose a new password.
+                </ThemedText>
+
+                <View style={styles.inputContainer}>
+                  <Feather name="hash" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                    placeholder="6-digit code"
+                    placeholderTextColor={theme.textSecondary}
+                    value={code}
+                    onChangeText={setCode}
+                    keyboardType="number-pad"
+                    autoCapitalize="none"
+                    maxLength={6}
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Feather name="lock" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                        paddingRight: 50,
+                      },
+                    ]}
+                    placeholder="New password"
+                    placeholderTextColor={theme.textSecondary}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                  />
+                  <Pressable
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.passwordToggle}
+                  >
+                    <Feather
+                      name={showPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color={theme.textSecondary}
+                    />
+                  </Pressable>
+                </View>
+
+                <Button onPress={handleReset} disabled={loading} style={styles.button}>
+                  {loading ? "Please wait..." : "Reset Password"}
+                </Button>
+
+                <Pressable onPress={() => switchMode("login")} style={styles.switchMode}>
+                  <ThemedText type="body" style={{ color: theme.primary }}>
+                    Back to Login
+                  </ThemedText>
+                </Pressable>
+              </>
+            ) : mode === "verify" ? (
               <>
                 <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg, textAlign: "center" }}>
                   We've sent a verification email to your inbox. Click the link in the email to verify your account.
@@ -259,6 +427,17 @@ export default function AuthScreen() {
                     />
                   </Pressable>
                 </View>
+
+                {mode === "login" ? (
+                  <Pressable
+                    onPress={() => switchMode("forgot")}
+                    style={styles.forgotPassword}
+                  >
+                    <ThemedText type="caption" style={{ color: theme.primary }}>
+                      Forgot password?
+                    </ThemedText>
+                  </Pressable>
+                ) : null}
 
                 <Button
                   onPress={mode === "login" ? handleLogin : handleRegister}
@@ -366,6 +545,10 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: Spacing.md,
+  },
+  forgotPassword: {
+    alignSelf: "flex-end",
+    paddingVertical: Spacing.xs,
   },
   divider: {
     flexDirection: "row",

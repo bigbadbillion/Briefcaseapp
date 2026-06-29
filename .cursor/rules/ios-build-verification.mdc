@@ -1,0 +1,39 @@
+---
+description: Verify substantial changes with an Xcode build; get approval before risky native/CocoaPods actions
+alwaysApply: true
+---
+
+# iOS build verification and native tooling
+
+This is an Expo + React Native app with a native `ios/` project (CocoaPods). The `ios/` and `android/` folders are **gitignored by design** (see `.gitignore` — standard Expo practice). They may still exist locally; do not assume they are missing because search tools skip gitignored paths.
+
+## After substantial changes: verify with Xcode
+
+When a task materially changes the app (new native deps, auth/client/server flows, Expo config/plugins, navigation, build scripts, etc.), **finish by confirming the iOS project compiles**.
+
+1. Check that `ios/` exists with shell (`ls ios/`), not only repo search/glob (gitignored paths are often invisible to those tools).
+2. Run an Xcode build against the existing workspace — do not regenerate native projects unless the user asked:
+
+```bash
+cd ios && xcodebuild -workspace Briefcase.xcworkspace -scheme Briefcase -configuration Debug -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' build
+```
+
+3. If no matching simulator name exists, list available destinations from the `xcodebuild` error output and pick one that exists (e.g. iPhone 17, iPhone 17 Pro).
+4. Report **BUILD SUCCEEDED** or the actual compile error. Do not claim the task is done if the Xcode build failed.
+
+## Approval required before risky native actions
+
+**Ask the user before** running commands that can mutate or destabilize the native tree, including:
+
+- `pod install` / `pod update` / `pod deintegrate`
+- `npx expo prebuild` / `expo run:ios` when it would regenerate `ios/`
+- Deleting or overwriting `ios/`, `Podfile.lock`, `Pods/`, or `.xcworkspace`
+- `xcodebuild clean` on the whole workspace when not explicitly requested
+
+CocoaPods may already be fully installed. Prefer `xcodebuild` first. Only run `pod install` when the build error clearly indicates missing/stale pod artifacts (e.g. missing modulemap under `Pods/Headers`) **and** the user approves.
+
+## Do not
+
+- Assume `ios/` does not exist because it is gitignored.
+- Run `pod install` proactively “just in case” after JS-only changes.
+- Skip the Xcode build after adding packages with native code (e.g. `expo-secure-store`).

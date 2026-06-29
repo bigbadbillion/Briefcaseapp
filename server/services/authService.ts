@@ -2,12 +2,21 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { storage } from "../storage";
 import type { User } from "@shared/schema";
-import { sendVerificationEmail, sendWelcomeEmail, isEmailConfigured } from "./emailService";
+import { sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail, isEmailConfigured } from "./emailService";
 
 const SALT_ROUNDS = 12;
 const SESSION_DURATION_DAYS = 30;
 const VERIFICATION_TOKEN_DURATION_HOURS = 24;
+const RESET_CODE_DURATION_MINUTES = 15;
 const APPLE_TEAM_ID = "439GU2NXZH";
+
+function generateResetCode(): string {
+  return crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+}
+
+function hashResetCode(code: string): string {
+  return crypto.createHash("sha256").update(code).digest("hex");
+}
 
 export interface AuthResult {
   success: boolean;
@@ -203,6 +212,80 @@ export async function resendVerification(email: string): Promise<AuthResult> {
   } catch (error) {
     console.error("Resend verification error:", error);
     return { success: false, error: "Failed to resend verification" };
+  }
+}
+
+export async function requestPasswordReset(email: string): Promise<AuthResult> {
+  try {
+    const user = await storage.getUserByEmail(email);
+    // Always return success to avoid leaking which emails are registered.
+    if (!user) {
+      return { success: true };
+    }
+
+    const code = generateResetCode();
+    const resetCodeExpires = new Date(
+      Date.now() + RESET_CODE_DURATION_MINUTES * 60 * 1000
+    );
+
+    await storage.updateUser(user.id, {
+      resetCodeHash: hashResetCode(code),
+      resetCodeExpires,
+    });
+
+    const emailResult = await sendPasswordResetEmail(
+      user.email,
+      user.name || '',
+      code
+    );
+
+    return {
+      success: true,
+      emailSent: emailResult.success,
+    };
+  } catch (error) {
+    console.error("Password reset request error:", error);
+    return { success: false, error: "Failed to process password reset" };
+  }
+}
+
+export async function resetPassword(
+  email: string,
+  code: string,
+  newPassword: string
+): Promise<AuthResult> {
+  try {
+    const user = await storage.getUserByEmail(email);
+    if (
+      !user ||
+      !user.resetCodeHash ||
+      !user.resetCodeExpires ||
+      user.resetCodeExpires < new Date()
+    ) {
+      return { success: false, error: "Invalid or expired reset code" };
+    }
+
+    if (hashResetCode(code) !== user.resetCodeHash) {
+      return { success: false, error: "Invalid or expired reset code" };
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    await storage.updateUser(user.id, {
+      password: hashedPassword,
+      resetCodeHash: null,
+      resetCodeExpires: null,
+      // A successful reset also confirms control of the inbox.
+      emailVerified: true,
+    });
+
+    // Invalidate all existing sessions so a leaked/old session can't persist.
+    await storage.deleteUserSessions(user.id);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Password reset error:", error);
+    return { success: false, error: "Failed to reset password" };
   }
 }
 

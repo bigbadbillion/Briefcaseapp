@@ -14,6 +14,8 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").default(false).notNull(),
   verificationToken: text("verification_token"),
   verificationExpires: timestamp("verification_expires"),
+  resetCodeHash: text("reset_code_hash"),
+  resetCodeExpires: timestamp("reset_code_expires"),
   isPremium: boolean("is_premium").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -78,6 +80,16 @@ export const registerSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required").optional(),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  code: z.string().length(6, "Enter the 6-digit code from your email"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export const holdingSchema = z.object({

@@ -321,19 +321,24 @@ Physical device: `EXPO_PUBLIC_DOMAIN=<Mac-LAN-IP>:5001` (not `localhost`).
 
 5. Click **Create Web Service** and wait for the first deploy.
 
-6. **UptimeRobot keep-alive** (after first deploy succeeds):
-   - [uptimerobot.com](https://uptimerobot.com) → **Add New Monitor** → HTTP(s)
-   - URL: `https://YOUR-APP.onrender.com/api/health`
-   - Interval: **5 minutes**
-   - Save
+6. **UptimeRobot keep-alive** (after first deploy succeeds) — see steps below. **Note:** if you set Render's **Health Check Path** to `/api/health`, Render already pings your service every few seconds internally ([Render health checks](https://render.com/docs/health-checks)). That traffic usually prevents the 15‑min spin-down — UptimeRobot is optional backup + external alerting.
+
+**UptimeRobot setup (optional but recommended for alerts):**
+
+1. Sign up at [uptimerobot.com](https://uptimerobot.com) (free, no card).
+2. **Add New Monitor** → type **HTTP(s)**.
+3. **Friendly name:** e.g. `Briefcase API`
+4. **URL:** `https://briefcase-api-ykj0.onrender.com/api/health`
+5. **Monitoring interval:** **5 minutes** (not 5 seconds — free tier minimum is 5 min).
+6. Save → confirm status shows **Up** / **200 OK**.
 
 **Alternatives:** Fly.io (~$3–5/mo always-on), Railway (~$5/mo). Same build/start commands; skip `expo:static:build`.
 
-**Done when:** Render web service created, env vars set, UptimeRobot monitor added.
+**Done when:** Render web service created, env vars set, UptimeRobot monitor added (or skipped if relying on Render health checks).
 
-- [ ] Render web service created
-- [ ] Environment variables set on Render
-- [ ] UptimeRobot (or equivalent) pinging `/api/health` every 5 min
+- [x] Render web service created — **`briefcase-api-ykj0.onrender.com`** (2026-06-28)
+- [x] Environment variables set on Render (`EXPO_PUBLIC_DOMAIN=briefcase-api-ykj0.onrender.com`)
+- [x] UptimeRobot (or equivalent) pinging `/api/health` every 5 min (2026-06-28)
 
 ---
 
@@ -347,7 +352,7 @@ Physical device: `EXPO_PUBLIC_DOMAIN=<Mac-LAN-IP>:5001` (not `localhost`).
 | Variable | Local dev (`.env.local`) | Production (Render) |
 |----------|--------------------------|---------------------|
 | `DATABASE_URL` | Session pooler, port **5432** (via `load-env.sh`) | **Transaction pooler**, port **6543** |
-| `EXPO_PUBLIC_DOMAIN` | Mac LAN IP or `localhost:5001` | `your-app.onrender.com` now; custom domain in Task 10 |
+| `EXPO_PUBLIC_DOMAIN` | Mac LAN IP or `localhost:5001` | **`briefcase-api-ykj0.onrender.com`** (hostname only; custom domain in Task 10) |
 
 **Important — `DATABASE_URL` on Render is not the same as local dev.**
 
@@ -368,45 +373,78 @@ Do **not** set `PORT` — Render injects it automatically.
 3. Confirm logs and health:
 
 ```bash
-curl https://your-app.onrender.com/api/health
-curl https://your-app.onrender.com/
+curl https://briefcase-api-ykj0.onrender.com/api/health
+curl https://briefcase-api-ykj0.onrender.com/
 ```
 
    Logs should show `express server serving on port ...` (Render-assigned port).
 
-4. Confirm UptimeRobot shows **200 OK** on `/api/health`.
+   **Render health check pings:** If Health Check Path is `/api/health`, Render probes it every few seconds — this is normal and shows in logs as `GET /api/health 200`. Not UptimeRobot.
+
+4. Confirm UptimeRobot shows **200 OK** (after Task 8 monitor is added).
 
 **Done when:** Production URL responds (landing page at `/`, API at `/api/*`).
 
-- [ ] Production deploy succeeded
-- [ ] Environment variables set on Render
-- [ ] `/api/health` responds
-- [ ] UptimeRobot monitor active
+- [x] Production deploy succeeded (2026-06-28)
+- [x] Environment variables set on Render
+- [x] `/api/health` responds
+- [x] UptimeRobot monitor active (2026-06-28)
 
 ---
 
 ### Task 10 — Configure custom domain
 
-**Why now:** Replace `briefcaseapp.replit.app` with a domain you control.
+**Why now:** Replace `briefcaseapp.replit.app` with a domain you control — **before Task 11** so you Archive once with the final hostname.
+
+**One domain for everything (not separate “backend” vs “landing”):**
+
+Render runs a **single** Express app that serves:
+
+| Path | What |
+|------|------|
+| `/` | Landing page |
+| `/privacy`, `/support`, `/docs` | Static pages |
+| `/api/*` | Mobile app API |
+
+**Target domain:** **`briefcase.echovault.me`** — same hostname for the landing page in a browser **and** for API calls from the app. You do **not** need a separate `api.` subdomain unless you want one for aesthetics.
+
+`EXPO_PUBLIC_DOMAIN=briefcase.echovault.me` means the app calls `https://briefcase.echovault.me/api/...` — the same host users visit for the marketing site.
 
 **Do:**
-1. Register or choose a domain (e.g. `api.yourdomain.com` or `briefcase.yourdomain.com`).
-2. Add DNS records per your host's instructions (CNAME or A record).
-3. Enable HTTPS (automatic on Render).
-4. Update `EXPO_PUBLIC_DOMAIN` in the Render dashboard to the new domain (hostname only, e.g. `api.yourdomain.com`) → **Save** (triggers redeploy so server-side email links pick up the new domain).
-5. Update the UptimeRobot monitor URL to `https://api.yourdomain.com/api/health`.
-6. **After Task 11:** rebuild and resubmit the iOS app — `EXPO_PUBLIC_DOMAIN` is inlined at Xcode Archive time and does not update over the air.
 
-**Also update:**
+1. **Render** → your web service → **Settings → Custom Domains** → add **`briefcase.echovault.me`**. Copy the **CNAME target** Render shows (usually your `*.onrender.com` hostname).
+
+2. **Vercel DNS (dashboard — not CLI):** The API is hosted on **Render**, not Vercel. You only need a **DNS record**, not a Vercel project/deploy.
+   - Vercel → **Domains** → `echovault.me` → **DNS Records**
+   - Add **CNAME**: name **`briefcase`** → value = Render’s CNAME target
+   - Do **not** attach this subdomain to a Vercel deployment (that would route traffic to Vercel instead of Render).
+
+   Vercel CLI is for deploying apps on Vercel — skip it here; the dashboard is simpler for one CNAME.
+
+3. Wait for Render to verify DNS and issue HTTPS (often 5–30 min).
+
+4. Update **`EXPO_PUBLIC_DOMAIN`** on Render to **`briefcase.echovault.me`** → Save (redeploy).
+
+5. Update UptimeRobot monitor URL to `https://briefcase.echovault.me/api/health`.
+
+6. Verify:
+
+```bash
+curl https://briefcase.echovault.me/api/health
+open https://briefcase.echovault.me/
+```
+
+**Also update (if applicable):**
 - Resend sending domain (if using custom from-address)
-- RevenueCat webhook URLs (if configured)
-- Apple Sign In redirect domains (if applicable)
+- RevenueCat webhook URLs
+- Apple Sign In redirect domains
 
-**Done when:** `https://<your-domain>/` loads the landing page with a valid certificate.
+**Done when:** Landing page and `/api/health` both work on `https://briefcase.echovault.me`.
 
-- [ ] Custom domain DNS configured
-- [ ] HTTPS working
-- [ ] `EXPO_PUBLIC_DOMAIN` updated on host
+- [x] CNAME `briefcase.echovault.me` → Render (Vercel DNS) (2026-06-28)
+- [x] HTTPS working on Render
+- [x] `EXPO_PUBLIC_DOMAIN=briefcase.echovault.me` on Render
+- [x] UptimeRobot URL updated
 
 ---
 
@@ -416,37 +454,52 @@ curl https://your-app.onrender.com/
 
 The app only calls your Render host for **API requests** (`/api/auth/*`, `/api/prices/*`, etc.). Release builds minify JS automatically — no separate minify step and no Expo dev server needed in production.
 
-**Prerequisite:** Task 9 (or 10) live URL — `EXPO_PUBLIC_DOMAIN` is baked in when Metro bundles during Archive.
+**Prerequisite:** **Task 10 complete** — Archive with `briefcase.echovault.me` so you don’t ship a build pointing at `*.onrender.com`.
 
 **Do:**
-1. Set the production API hostname (must match Render / custom domain):
+1. Set the production hostname — **must match Render `EXPO_PUBLIC_DOMAIN` exactly**:
 
 ```bash
-export EXPO_PUBLIC_DOMAIN="api.yourdomain.com"   # or your-app.onrender.com for testing
+export EXPO_PUBLIC_DOMAIN="briefcase.echovault.me"
 ```
+
+   Hostname only, no `https://`. This is the same domain as the landing page; the app uses it for `/api/*` calls.
 
 2. Generate the native iOS project (once, or after adding native plugins):
 
 ```bash
 npm install
+export EXPO_PUBLIC_DOMAIN="briefcase.echovault.me"
 npx expo prebuild --platform ios
 cd ios && pod install && cd ..
 ```
 
-3. Open **`ios/Briefcase.xcworkspace`** in Xcode (not `.xcodeproj`).
+3. **Pin the domain for Xcode Archive** — create `ios/.xcode.env.local` (gitignored with `/ios`) so Product → Archive bakes in the correct API URL **and finds Node** (Xcode’s PATH often omits Homebrew):
 
-4. Select **Any iOS Device (arm64)** → **Product → Archive**.
+```bash
+cat > ios/.xcode.env.local <<'EOF'
+export NODE_BINARY=/opt/homebrew/bin/node
+export EXPO_PUBLIC_DOMAIN=briefcase.echovault.me
+EOF
+```
 
-5. **Distribute App** → App Store Connect (TestFlight first recommended).
+   If `which node` on your Mac is not Homebrew, use that path instead. **Symptom:** `ReactNativeDependencies` / `hermes-engine` → `PhaseScriptExecution failed` usually means `NODE_BINARY` was empty.
 
-6. On a TestFlight device, verify login, holdings, and prices hit the **new** host (not `briefcaseapp.replit.app`).
+4. Open **`ios/Briefcase.xcworkspace`** in Xcode (not `.xcodeproj`).
 
-**Note:** If you change `EXPO_PUBLIC_DOMAIN` after this (e.g. custom domain in Task 10), you must **Archive and submit again** — the API URL is in the binary until the next App Store update.
+5. Select **Any iOS Device (arm64)** → **Product → Archive**.
 
-**Done when:** TestFlight build works end-to-end against production API.
+6. **Distribute App** → App Store Connect (TestFlight first recommended).
 
-- [ ] `EXPO_PUBLIC_DOMAIN` set to production hostname before Archive
-- [ ] `npx expo prebuild` + `pod install` succeeded
+7. On a TestFlight device, verify login, holdings, and prices hit **`briefcase.echovault.me`** (not `briefcaseapp.replit.app`).
+
+**Note:** `EXPO_PUBLIC_DOMAIN` is inlined at Xcode Archive time. If you change it later, Archive and submit again.
+
+**Done when:** TestFlight build works against `https://briefcase.echovault.me/api/*`.
+
+- [x] Task 10 done (`briefcase.echovault.me` live)
+- [ ] `EXPO_PUBLIC_DOMAIN=briefcase.echovault.me` before Archive (`ios/.xcode.env.local`) — file created
+- [x] `npx expo prebuild` + `pod install` succeeded (2026-06-28)
 - [ ] Archive uploaded to App Store Connect / TestFlight
 - [ ] TestFlight smoke test passed against live API
 
@@ -456,7 +509,7 @@ cd ios && pod install && cd ..
 
 **Why now:** Final gate before App Store submit and cutting over users.
 
-**Checklist (live Render URL + TestFlight build from Task 11):**
+**Checklist (live `briefcase.echovault.me` + TestFlight build from Task 11):**
 - [ ] Landing page, `/privacy`, `/support` load on new domain
 - [ ] Email/password registration + verification email arrives
 - [ ] Login persists session (holdings visible after restart)
@@ -523,19 +576,20 @@ npm run expo:dev            # Expo — reads .env.local
 |------|--------|--------------|
 | **6** Remove Replit code | — | ✅ Done 2026-06-28 |
 | **7** Verify locally | — | ✅ Done 2026-06-28 (physical device, auth, holdings, Gemini) |
-| **8** Choose hosting | Render web service + UptimeRobot ping | API-only build; see Task 8 |
-| **9** Deploy backend | Render env vars + deploy | `DATABASE_URL` = transaction pooler (`aws-1-us-east-2:6543`) |
-| **10** Custom domain | DNS → Render; update `EXPO_PUBLIC_DOMAIN` + UptimeRobot URL | Re-Archive iOS app after domain change |
-| **11** Xcode Archive | `expo prebuild`, `pod install`, Archive in Xcode | Set `EXPO_PUBLIC_DOMAIN` before Archive; **no** `expo:static:build` |
+| **8** Choose hosting | Render + UptimeRobot | ✅ Done 2026-06-28 |
+| **9** Deploy backend | Render env vars + deploy | ✅ `briefcase-api-ykj0.onrender.com` |
+| **10** Custom domain | **`briefcase.echovault.me`** → Render (Vercel DNS CNAME) | ✅ Done 2026-06-28 |
+| **11** Xcode Archive | `expo prebuild`, `pod install`, Archive in Xcode | `ios/.xcode.env.local` + Archive |
 | **12** Production smoke test | TestFlight + live API checklist | Task 12 |
 | **13** App Store submit | Submit Archive from Task 11 | Required for users on `briefcaseapp.replit.app` |
 | **14** Decommission Replit | Final prod backup; stop deployment | After 24–48h stable on new host |
 
-**Production env on host (Task 9)** — copy from `.env.local` but change:
+**Production hostname (after Task 10):** `briefcase.echovault.me`  
+**Render fallback URL:** `https://briefcase-api-ykj0.onrender.com` (until Task 10 DNS propagates)
 
 ```bash
-EXPO_PUBLIC_DOMAIN=your-domain.com
-DATABASE_URL=<transaction pooler URI — use DATABASE_URL_POOLER from load-env.sh pattern>
+EXPO_PUBLIC_DOMAIN=briefcase.echovault.me   # after Task 10; use on Render + Xcode Archive
+DATABASE_URL=<transaction pooler URI — port 6543, see Task 9>
 # Same: GEMINI_API_KEY, FINNHUB_API_KEY, RESEND_API_KEY
 # Render sets PORT automatically — do not override
 ```
@@ -555,10 +609,10 @@ DATABASE_URL=<transaction pooler URI — use DATABASE_URL_POOLER from load-env.s
 | 5 | Secrets + `.env.local` (API keys) | ✅ |
 | 6 | Remove Replit code paths | ✅ |
 | 7 | Verify locally | ✅ |
-| 8 | Choose hosting (Render + UptimeRobot) | ⬜ ← **next** |
-| 9 | Deploy backend | ⬜ |
-| 10 | Custom domain | ⬜ |
-| 11 | Xcode Archive (production iOS build) | ⬜ |
+| 8 | Choose hosting (Render + UptimeRobot) | ✅ |
+| 9 | Deploy backend | ✅ |
+| 10 | Custom domain **`briefcase.echovault.me`** | ✅ |
+| 11 | Xcode Archive | 🟡 in progress |
 | 12 | Production verification | ⬜ |
 | 13 | App Store submit | ⬜ |
 | 14 | Decommission Replit | ⬜ |
@@ -578,6 +632,16 @@ Track artifacts and gotchas here when debugging later tasks.
 | 2026-06-28 | Updated `.gitignore` | Added `.local/`, `.config/`, `.env`, `*.dump` |
 
 **Commit:** `f0d000e` — Fix npm lockfile and gitignore for off-Replit development.
+
+### Render production (Task 8–9)
+
+| Date | Action | Notes |
+|------|--------|-------|
+| 2026-06-28 | Render web service deployed | **`https://briefcase-api-ykj0.onrender.com`** |
+| 2026-06-28 | Build fix: added `esbuild` to `dependencies` | Render `server:build` was failing with `esbuild: not found` |
+| 2026-06-28 | `EXPO_PUBLIC_DOMAIN` | Must be **`briefcase-api-ykj0.onrender.com`** (not `briefcase-api.onrender.com`) |
+| 2026-06-28 | UptimeRobot monitor | Pinging `/api/health` every 5 min |
+| 2026-06-28 | Task 10 custom domain live | **`https://briefcase.echovault.me`** — landing + API |
 
 ### Files created for migration
 
@@ -623,6 +687,7 @@ npm run db:push                # Drizzle schema only (if no dump)
 | `aws-0-us-east-2` pooler → tenant not found | This project's pooler is **`aws-1-us-east-2.pooler.supabase.com`** (not `aws-0`) |
 | `DATABASE_URL` / `REPLACE_ME` in `.env.local` | Only set `SUPABASE_DB_PASSWORD` — scripts build the URL automatically |
 | `load-env.sh` "Missing .env.local" when sourced | Fixed: use `${BASH_SOURCE[0]}` not `$0` |
+| `ReactNativeDependencies` / `hermes-engine` `PhaseScriptExecution failed` in Xcode | Set `export NODE_BINARY=/opt/homebrew/bin/node` in `ios/.xcode.env.local` (Xcode GUI doesn’t inherit Homebrew PATH) |
 | Dev vs prod Replit dump | Shell `$DATABASE_URL` = **dev** (helium). Production URL from Database → **Production** → Settings (neon.tech) |
 
 **Auto-built connection strings** (in `scripts/load-env.sh`):
