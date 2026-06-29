@@ -24,7 +24,8 @@ import { ThemeProvider, useThemeContext } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 
-SplashScreen.preventAutoHideAsync();
+// Keep the native launch storyboard visible until fonts are ready (no duplicate JS splash).
+void SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
   const { isDark } = useThemeContext();
@@ -50,7 +51,7 @@ export default function App() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      void SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
 

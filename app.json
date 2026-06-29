@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "me.echovault.briefcase",
       "usesAppleSignIn": true,
-      "buildNumber": "2"
+      "buildNumber": "8"
     },
     "android": {
       "adaptiveIcon": {

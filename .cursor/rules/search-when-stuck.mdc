@@ -1,0 +1,43 @@
+---
+description: Web-search early when stuck; stop looping on the same failed approach
+alwaysApply: true
+---
+
+# Search when stuck — don't loop
+
+## When to search
+
+If the same problem is **not resolved after 3 back-and-forth turns** (or 3 distinct fix attempts), **stop guessing** and run a **web search first** before proposing another change.
+
+Search is especially required for:
+
+- Platform quirks (iOS launch screen cache, CocoaPods, Xcode, App Store / TestFlight behavior)
+- Expo / React Native native-module or config-plugin behavior
+- Errors or symptoms that persist after a clean rebuild or obvious fix
+
+Do not burn the user's time retrying variations of a hypothesis that already failed.
+
+## How to search
+
+1. Search for the **specific symptom + platform** (e.g. "iOS launch screen cache old image same bundle id").
+2. Read authoritative sources: Apple forums, Expo docs/issues, well-cited Stack Overflow, maintainer blogs.
+3. Apply the **documented workaround** (often several combined), not another ad-hoc tweak.
+4. Tell the user briefly what the search found and what you changed because of it.
+
+## Anti-patterns (avoid)
+
+- Cycling between opposite fixes (native-only ↔ JS-only) without new evidence.
+- Re-running the same clean/build/bump steps hoping for a different result.
+- Assuming the user's device or tooling is wrong when the issue is a known OS/framework bug.
+- Treating "delete app and rebuild" as a complete fix when forums document additional steps (rename asset, move out of xcassets, power-cycle, SplashBoard cache, etc.).
+
+## Briefcase-specific example (iOS splash)
+
+iOS caches launch screens per bundle ID; Expo re-shows `UILaunchStoryboardName` when RN mounts. Fixes that actually work:
+
+- Image **outside** `Images.xcassets` with a **new filename**
+- **Rename** the launch storyboard to bust cache
+- `preventAutoHideAsync()` until ready — not `hideAsync()` immediately + a duplicate JS splash
+- DEBUG: clear `~/Library/SplashBoard` in `AppDelegate` for dev builds
+
+Search would have surfaced this in minutes instead of hours of trial and error.
