@@ -86,6 +86,30 @@ export async function fetchRevenueCatPremiumStatus(
   return isEntitlementActive(entitlement);
 }
 
+const RC_ANONYMOUS_PREFIX = "$RCAnonymousID:";
+
+export function isKnownAppUserId(id: string): boolean {
+  return !!id && !id.startsWith(RC_ANONYMOUS_PREFIX);
+}
+
+/** RevenueCat TRANSFER events use transferred_from/to instead of app_user_id. */
+export function resolveWebhookSyncUserIds(
+  event: Record<string, unknown> | undefined
+): string[] {
+  if (!event) {
+    return [];
+  }
+
+  if (event.type === "TRANSFER") {
+    const from = (event.transferred_from as string[] | undefined) ?? [];
+    const to = (event.transferred_to as string[] | undefined) ?? [];
+    return [...new Set([...from, ...to].filter(isKnownAppUserId))];
+  }
+
+  const appUserId = event.app_user_id as string | undefined;
+  return appUserId && isKnownAppUserId(appUserId) ? [appUserId] : [];
+}
+
 export function verifyWebhookAuthorization(
   authorizationHeader: string | undefined
 ): boolean {

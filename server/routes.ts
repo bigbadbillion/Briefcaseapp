@@ -33,7 +33,10 @@ import { storage } from "./storage";
 import { authLimiter, aiChatLimiter } from "./middleware/rateLimit";
 import { premiumMiddleware } from "./middleware/premium";
 import { syncUserPremiumFromRevenueCat } from "./services/subscriptionService";
-import { verifyWebhookAuthorization } from "./services/revenueCatService";
+import {
+  resolveWebhookSyncUserIds,
+  verifyWebhookAuthorization,
+} from "./services/revenueCatService";
 import {
   registerSchema,
   loginSchema,
@@ -585,29 +588,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(401).json({ error: "Unauthorized" });
         }
 
-        const event = req.body?.event;
-        const appUserId = event?.app_user_id as string | undefined;
+        const event = req.body?.event as Record<string, unknown> | undefined;
+        const userIds = resolveWebhookSyncUserIds(event);
 
-        if (!appUserId) {
-          return res.status(400).json({ error: "Missing app_user_id" });
+        if (userIds.length === 0) {
+          console.info(
+            JSON.stringify({
+              event: "revenuecat_webhook",
+              type: event?.type,
+              skipped: true,
+              reason:
+                event?.type === "TRANSFER"
+                  ? "no_known_users_in_transfer"
+                  : "missing_app_user_id",
+            })
+          );
+          return res.json({ received: true, skipped: true });
         }
 
-        const result = await syncUserPremiumFromRevenueCat(appUserId, {
-          allowDowngrade: true,
-        });
+        const results = await Promise.all(
+          userIds.map((userId) =>
+            syncUserPremiumFromRevenueCat(userId, { allowDowngrade: true })
+          )
+        );
 
         console.info(
           JSON.stringify({
             event: "revenuecat_webhook",
             type: event?.type,
-            appUserId,
-            isPremium: result.isPremium,
-            updated: result.updated,
-            notFound: result.notFound,
+            userIds,
+            results: results.map((result, index) => ({
+              userId: userIds[index],
+              isPremium: result.isPremium,
+              updated: result.updated,
+              notFound: result.notFound,
+            })),
           })
         );
 
-        res.json({ received: true, ...result });
+        if (userIds.length === 1) {
+          return res.json({ received: true, ...results[0] });
+        }
+
+        res.json({
+          received: true,
+          synced: userIds.map((userId, index) => ({
+            userId,
+            ...results[index],
+          })),
+        });
       } catch (error) {
         console.error("Error in /api/webhooks/revenuecat:", error);
         res.status(500).json({ error: "Webhook processing failed" });
